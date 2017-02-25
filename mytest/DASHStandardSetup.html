@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dash.js Rocks</title>
+	<style>
+		video{
+			width: 640px;
+			height: 360px;
+		}
+	</style>
+</head>
+<body>
+    <div>
+        <video id="videoPlayer" controls></video>
+    </div>
+    <script src="dash.js/build/temp/dash.all.min.js"></script>
+	<script>
+		(
+				function () {
+					var url="http://dash.edgesuite.net/envivio/EnvivioDash3/manifest.mpd";
+					var player=dashjs.MediaPlayer().create();
+					player.initialize(document.querySelector("#videoPlayer"),url,true);
+					
+				}
+		)();
+		
+	</script>
+
+
+</body>
+</html>
