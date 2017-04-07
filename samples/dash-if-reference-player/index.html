@@ -16,16 +16,17 @@
     <!--Libs-->
     <script src="app/lib/jquery/jquery-3.1.1.min.js"></script>
 
-
     <script src="app/lib/angular/angular.min.js"></script>
     <script src="app/lib/angular/angular-resource.min.js"></script>
     <script src="app/lib/angular/angular-flot.js"></script>
+    <script src="app/lib/fileSaver/angular-file-saver.bundle.min.js"></script>
 
     <script src="app/lib/bootstrap/js/bootstrap.min.js"></script>
 
     <script src="app/lib/flot/jquery.flot.min.js"></script>
     <script src="app/lib/flot/jquery.flot.resize.min.js"></script>
     <script src="app/lib/flot/jquery.flot.axislabels.js"></script>
+
     <!-- App -->
     <script src="../../dist/dash.all.debug.js"></script>
     <script src="../../contrib/akamai/controlbar/ControlBar.js"></script>
@@ -98,9 +99,7 @@
 
                 </div>
                 <div id="mobile-streams" class="input-group-btn">
-                    <button type="button" class="btn btn-primary" data-toggle="modal" href="#streamModal">
-                        Stream <span class="caret"></span>
-                    </button>
+                    <button type="button" class="btn btn-primary" data-toggle="modal" href="#streamModal"></button>
                 </div>
                 <input type="text" class="form-control" ng-model="selectedItem.url">
                 <span class="input-group-btn">
@@ -373,7 +372,10 @@
                 </div>
             </div>
         </div>
-
+<div>
+    <button class="btn btn-primary" ng-click="DownloadMetrics_BufferLevel('video')">download buffer level</button>
+    <button class="btn btn-primary" ng-click="DownloadMetrics_BitRate('video')">download bit rate</button>
+</div>
     </div>
 
     <!-- FOOTER -->
