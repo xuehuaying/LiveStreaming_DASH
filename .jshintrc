@@ -4,7 +4,7 @@
     "noempty": true,
     "latedef": "nofunc",
     "undef": true,
-    "unused": true,
+    "unused": false,
     "strict": false,
     "trailing": true,
     "node": true,
