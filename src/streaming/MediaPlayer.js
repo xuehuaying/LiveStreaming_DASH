@@ -1302,6 +1302,21 @@ function MediaPlayer() {
         mediaPlayerModel.setBufferOccupancyABREnabled(value);
     }
 
+	/**
+	 * Enabling PerceptualContentAwareThroughput ABR will switch to the adaptation algorithm based on perceptual
+     * model of the content,
+	 * replacing the throughput-based ABR rule set (ThroughputRule, BufferOccupancyRule,
+	 * InsufficientBufferRule and AbandonRequestsRule) and the buffer-based ABR rule (BolaRule, BolaAbandonRule)
+     * with the content perceptual-based rule set (PerceptualContentAwareRule).
+	 *
+	 * @param {boolean} value
+	 * @default false
+	 * @memberof module:MediaPlayer
+	 * @instance
+	 */
+    function enablePerceptualContentAwareThroughputABR(value) {
+        mediaPlayerModel.setPerceptualContentAwareThroughputABR(value);
+    }
     /**
      * Allows application to retrieve a manifest.  Manifest loading is asynchro
      * nous and
@@ -2122,7 +2137,9 @@ function MediaPlayer() {
         attachVideoContainer: attachVideoContainer,
         attachTTMLRenderingDiv: attachTTMLRenderingDiv,
         getCurrentTextTrackIndex: getCurrentTextTrackIndex,
-        reset: reset
+        reset: reset,
+    //    by huaying
+	    enablePerceptualContentAwareThroughputABR:enablePerceptualContentAwareThroughputABR
     };
 
     setup();

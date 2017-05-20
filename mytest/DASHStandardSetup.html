@@ -6,7 +6,7 @@
 	<style>
 		video{
 			width: 640px;
-			height: 360px;
+			height: 480px;
 		}
 	</style>
 </head>
@@ -14,13 +14,18 @@
     <div>
         <video id="videoPlayer" controls></video>
     </div>
-    <script src="../dist/dash.all.min.js"></script>
+    <script src="../dist/dash.all.debug.js"></script>
 	<script>
 		(
 				function () {
-					var url="http://dash.edgesuite.net/envivio/EnvivioDash3/manifest.mpd";
+//					var url="http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd";
+					var url="http://222.31.64.208:80/VODs/big_buck_bunny_128k_a_dash_2.mpd";
+//					var url="http://222.31.64.226:18080/dash/mystream.mpd";
 					var player=dashjs.MediaPlayer().create();
+					player.enablePerceptualContentAwareThroughputABR(true);
+//					player.enableBufferOccupancyABR(true);
 					player.initialize(document.querySelector("#videoPlayer"),url,true);
+					
 					
 				}
 		)();

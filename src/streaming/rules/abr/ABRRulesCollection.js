@@ -41,6 +41,15 @@ import DashMetrics from '../../../dash/DashMetrics';
 import FactoryMaker from '../../../core/FactoryMaker';
 import SwitchRequest from '../SwitchRequest.js';
 
+//by huaying
+import PerceptualContentAwareRule from './PerceptualContentAwareRule.js';
+
+
+
+
+
+
+
 const QUALITY_SWITCH_RULES = 'qualitySwitchRules';
 const ABANDON_FRAGMENT_RULES = 'abandonFragmentRules';
 
@@ -52,41 +61,45 @@ function ABRRulesCollection() {
         qualitySwitchRules,
         abandonFragmentRules;
 
-    function initialize() {
-        qualitySwitchRules = [];
-        abandonFragmentRules = [];
+	function initialize() {
+		qualitySwitchRules = [];
+		abandonFragmentRules = [];
 
-        let metricsModel = MetricsModel(context).getInstance();
-        let dashMetrics = DashMetrics(context).getInstance();
-        let mediaPlayerModel = MediaPlayerModel(context).getInstance();
+		let metricsModel = MetricsModel(context).getInstance();
+		let dashMetrics = DashMetrics(context).getInstance();
+		let mediaPlayerModel = MediaPlayerModel(context).getInstance();
+		//by huaying
+		if (mediaPlayerModel.getPerceptualContentAwareThroughputABR()) {
+			qualitySwitchRules.push(
+				PerceptualContentAwareRule(context).create()
+			);
+		} else if (mediaPlayerModel.getBufferOccupancyABREnabled()) {
+			qualitySwitchRules.push(
+				BolaRule(context).create({
+					metricsModel: metricsModel,
+					dashMetrics: DashMetrics(context).getInstance()
+				})
+			);
+			abandonFragmentRules.push(
+				BolaAbandonRule(context).create({
+					metricsModel: metricsModel,
+					dashMetrics: DashMetrics(context).getInstance()
+				})
+			);
+		} else {
+			qualitySwitchRules.push(
+				ThroughputRule(context).create({
+					metricsModel: metricsModel,
+					dashMetrics: dashMetrics
+				})
+			);
 
-        if (mediaPlayerModel.getBufferOccupancyABREnabled()) {
-            qualitySwitchRules.push(
-                BolaRule(context).create({
-                    metricsModel: metricsModel,
-                    dashMetrics: DashMetrics(context).getInstance()
-                })
-            );
-            abandonFragmentRules.push(
-                BolaAbandonRule(context).create({
-                    metricsModel: metricsModel,
-                    dashMetrics: DashMetrics(context).getInstance()
-                })
-            );
-        } else {
-            qualitySwitchRules.push(
-                ThroughputRule(context).create({
-                    metricsModel: metricsModel,
-                    dashMetrics: dashMetrics
-                })
-            );
-
-            qualitySwitchRules.push(InsufficientBufferRule(context).create({metricsModel: metricsModel}));
-            qualitySwitchRules.push(SwitchHistoryRule(context).create());
-            qualitySwitchRules.push(DroppedFramesRule(context).create());
-            abandonFragmentRules.push(AbandonRequestsRule(context).create());
-        }
-    }
+			qualitySwitchRules.push(InsufficientBufferRule(context).create({metricsModel: metricsModel}));
+			qualitySwitchRules.push(SwitchHistoryRule(context).create());
+			qualitySwitchRules.push(DroppedFramesRule(context).create());
+			abandonFragmentRules.push(AbandonRequestsRule(context).create());
+		}
+	}
 
     function getRules (type) {
         switch (type) {

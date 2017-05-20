@@ -31,7 +31,7 @@
 import FactoryMaker from '../../core/FactoryMaker';
 import {HTTPRequest} from '../vo/metrics/HTTPRequest';
 
-const DEFAULT_UTC_TIMING_SOURCE = { scheme: 'urn:mpeg:dash:utc:http-xsdate:2014', value: 'http://time.akamai.com/?iso' };
+const DEFAULT_UTC_TIMING_SOURCE = {scheme: 'urn:mpeg:dash:utc:http-xsdate:2014', value: 'http://time.akamai.com/?iso'};
 const LIVE_DELAY_FRAGMENT_COUNT = 4;
 
 const DEFAULT_LOCAL_STORAGE_BITRATE_EXPIRATION = 360000;
@@ -65,359 +65,376 @@ const DEFAULT_XHR_WITH_CREDENTIALS = false;
 
 function MediaPlayerModel() {
 
-    let instance,
-        useManifestDateHeaderTimeSource,
-        useSuggestedPresentationDelay,
-        UTCTimingSources,
-        liveDelayFragmentCount,
-        liveDelay,
-        scheduleWhilePaused,
-        bufferToKeep,
-        bufferPruningInterval,
-        lastBitrateCachingInfo,
-        lastMediaSettingsCachingInfo,
-        stableBufferTime,
-        bufferTimeAtTopQuality,
-        bufferTimeAtTopQualityLongForm,
-        longFormContentDurationThreshold,
-        richBufferThreshold,
-        bandwidthSafetyFactor,
-        abandonLoadTimeout,
-        retryAttempts,
-        retryIntervals,
-        wallclockTimeUpdateInterval,
-        bufferOccupancyABREnabled,
-        xhrWithCredentials,
-        fastSwitchEnabled;
+	let instance,
+		useManifestDateHeaderTimeSource,
+		useSuggestedPresentationDelay,
+		UTCTimingSources,
+		liveDelayFragmentCount,
+		liveDelay,
+		scheduleWhilePaused,
+		bufferToKeep,
+		bufferPruningInterval,
+		lastBitrateCachingInfo,
+		lastMediaSettingsCachingInfo,
+		stableBufferTime,
+		bufferTimeAtTopQuality,
+		bufferTimeAtTopQualityLongForm,
+		longFormContentDurationThreshold,
+		richBufferThreshold,
+		bandwidthSafetyFactor,
+		abandonLoadTimeout,
+		retryAttempts,
+		retryIntervals,
+		wallclockTimeUpdateInterval,
+		bufferOccupancyABREnabled,
+		xhrWithCredentials,
+		fastSwitchEnabled,
+		//by huaying
+		perceptualContentAwareThroughputABREnabled;
 
-    function setup() {
-        UTCTimingSources = [];
-        useSuggestedPresentationDelay = false;
-        useManifestDateHeaderTimeSource = true;
-        scheduleWhilePaused = true;
-        bufferOccupancyABREnabled = false;
-        fastSwitchEnabled = false;
-        lastBitrateCachingInfo = {enabled: true , ttl: DEFAULT_LOCAL_STORAGE_BITRATE_EXPIRATION};
-        lastMediaSettingsCachingInfo = {enabled: true , ttl: DEFAULT_LOCAL_STORAGE_MEDIA_SETTINGS_EXPIRATION};
-        liveDelayFragmentCount = LIVE_DELAY_FRAGMENT_COUNT;
-        liveDelay = undefined; // Explicitly state that default is undefined
-        bufferToKeep = BUFFER_TO_KEEP;
-        bufferPruningInterval = BUFFER_PRUNING_INTERVAL;
-        stableBufferTime = NaN;
-        bufferTimeAtTopQuality = BUFFER_TIME_AT_TOP_QUALITY;
-        bufferTimeAtTopQualityLongForm = BUFFER_TIME_AT_TOP_QUALITY_LONG_FORM;
-        longFormContentDurationThreshold = LONG_FORM_CONTENT_DURATION_THRESHOLD;
-        richBufferThreshold = RICH_BUFFER_THRESHOLD;
-        bandwidthSafetyFactor = BANDWIDTH_SAFETY_FACTOR;
-        abandonLoadTimeout = ABANDON_LOAD_TIMEOUT;
-        wallclockTimeUpdateInterval = WALLCLOCK_TIME_UPDATE_INTERVAL;
-        xhrWithCredentials = { default: DEFAULT_XHR_WITH_CREDENTIALS };
-
-
-        retryAttempts = {
-            [HTTPRequest.MPD_TYPE]:                         MANIFEST_RETRY_ATTEMPTS,
-            [HTTPRequest.XLINK_EXPANSION_TYPE]:             XLINK_RETRY_ATTEMPTS,
-            [HTTPRequest.MEDIA_SEGMENT_TYPE]:               FRAGMENT_RETRY_ATTEMPTS,
-            [HTTPRequest.INIT_SEGMENT_TYPE]:                FRAGMENT_RETRY_ATTEMPTS,
-            [HTTPRequest.BITSTREAM_SWITCHING_SEGMENT_TYPE]: FRAGMENT_RETRY_ATTEMPTS,
-            [HTTPRequest.INDEX_SEGMENT_TYPE]:               FRAGMENT_RETRY_ATTEMPTS,
-            [HTTPRequest.OTHER_TYPE]:                       FRAGMENT_RETRY_ATTEMPTS
-        };
-
-        retryIntervals = {
-            [HTTPRequest.MPD_TYPE]:                         MANIFEST_RETRY_INTERVAL,
-            [HTTPRequest.XLINK_EXPANSION_TYPE]:             XLINK_RETRY_INTERVAL,
-            [HTTPRequest.MEDIA_SEGMENT_TYPE]:               FRAGMENT_RETRY_INTERVAL,
-            [HTTPRequest.INIT_SEGMENT_TYPE]:                FRAGMENT_RETRY_INTERVAL,
-            [HTTPRequest.BITSTREAM_SWITCHING_SEGMENT_TYPE]: FRAGMENT_RETRY_INTERVAL,
-            [HTTPRequest.INDEX_SEGMENT_TYPE]:               FRAGMENT_RETRY_INTERVAL,
-            [HTTPRequest.OTHER_TYPE]:                       FRAGMENT_RETRY_INTERVAL
-        };
-    }
-
-    //TODO Should we use Object.define to have setters/getters? makes more readable code on other side.
-    function setBufferOccupancyABREnabled(value) {
-        bufferOccupancyABREnabled = value;
-    }
-
-    function getBufferOccupancyABREnabled() {
-        return bufferOccupancyABREnabled;
-    }
-
-    function setBandwidthSafetyFactor(value) {
-        bandwidthSafetyFactor = value;
-    }
-
-    function getBandwidthSafetyFactor() {
-        return bandwidthSafetyFactor;
-    }
-
-    function setAbandonLoadTimeout(value) {
-        abandonLoadTimeout = value;
-    }
-
-    function getAbandonLoadTimeout() {
-        return abandonLoadTimeout;
-    }
-
-    function setStableBufferTime (value) {
-        stableBufferTime = value;
-    }
-
-    function getStableBufferTime() {
-        return !isNaN(stableBufferTime) ? stableBufferTime : fastSwitchEnabled ? DEFAULT_MIN_BUFFER_TIME_FAST_SWITCH : DEFAULT_MIN_BUFFER_TIME;
-    }
-
-    function setBufferTimeAtTopQuality(value) {
-        bufferTimeAtTopQuality = value;
-    }
-
-    function getBufferTimeAtTopQuality() {
-        return bufferTimeAtTopQuality;
-    }
-
-    function setBufferTimeAtTopQualityLongForm(value) {
-        bufferTimeAtTopQualityLongForm = value;
-    }
-
-    function getBufferTimeAtTopQualityLongForm() {
-        return bufferTimeAtTopQualityLongForm;
-    }
-
-    function setLongFormContentDurationThreshold(value) {
-        longFormContentDurationThreshold = value;
-    }
-
-    function getLongFormContentDurationThreshold() {
-        return longFormContentDurationThreshold;
-    }
-
-    function setRichBufferThreshold(value) {
-        richBufferThreshold = value;
-    }
-
-    function getRichBufferThreshold() {
-        return richBufferThreshold;
-    }
+	function setup() {
+		UTCTimingSources = [];
+		useSuggestedPresentationDelay = false;
+		useManifestDateHeaderTimeSource = true;
+		scheduleWhilePaused = true;
+		bufferOccupancyABREnabled = false;
+		//by huaying
+		perceptualContentAwareThroughputABREnabled = false;
+		fastSwitchEnabled = false;
+		lastBitrateCachingInfo = {enabled: true, ttl: DEFAULT_LOCAL_STORAGE_BITRATE_EXPIRATION};
+		lastMediaSettingsCachingInfo = {enabled: true, ttl: DEFAULT_LOCAL_STORAGE_MEDIA_SETTINGS_EXPIRATION};
+		liveDelayFragmentCount = LIVE_DELAY_FRAGMENT_COUNT;
+		liveDelay = undefined; // Explicitly state that default is undefined
+		bufferToKeep = BUFFER_TO_KEEP;
+		bufferPruningInterval = BUFFER_PRUNING_INTERVAL;
+		stableBufferTime = NaN;
+		bufferTimeAtTopQuality = BUFFER_TIME_AT_TOP_QUALITY;
+		bufferTimeAtTopQualityLongForm = BUFFER_TIME_AT_TOP_QUALITY_LONG_FORM;
+		longFormContentDurationThreshold = LONG_FORM_CONTENT_DURATION_THRESHOLD;
+		richBufferThreshold = RICH_BUFFER_THRESHOLD;
+		bandwidthSafetyFactor = BANDWIDTH_SAFETY_FACTOR;
+		abandonLoadTimeout = ABANDON_LOAD_TIMEOUT;
+		wallclockTimeUpdateInterval = WALLCLOCK_TIME_UPDATE_INTERVAL;
+		xhrWithCredentials = {default: DEFAULT_XHR_WITH_CREDENTIALS};
 
 
-    function setBufferToKeep(value) {
-        bufferToKeep = value;
-    }
+		retryAttempts = {
+			[HTTPRequest.MPD_TYPE]: MANIFEST_RETRY_ATTEMPTS,
+			[HTTPRequest.XLINK_EXPANSION_TYPE]: XLINK_RETRY_ATTEMPTS,
+			[HTTPRequest.MEDIA_SEGMENT_TYPE]: FRAGMENT_RETRY_ATTEMPTS,
+			[HTTPRequest.INIT_SEGMENT_TYPE]: FRAGMENT_RETRY_ATTEMPTS,
+			[HTTPRequest.BITSTREAM_SWITCHING_SEGMENT_TYPE]: FRAGMENT_RETRY_ATTEMPTS,
+			[HTTPRequest.INDEX_SEGMENT_TYPE]: FRAGMENT_RETRY_ATTEMPTS,
+			[HTTPRequest.OTHER_TYPE]: FRAGMENT_RETRY_ATTEMPTS
+		};
 
-    function getBufferToKeep() {
-        return bufferToKeep;
-    }
+		retryIntervals = {
+			[HTTPRequest.MPD_TYPE]: MANIFEST_RETRY_INTERVAL,
+			[HTTPRequest.XLINK_EXPANSION_TYPE]: XLINK_RETRY_INTERVAL,
+			[HTTPRequest.MEDIA_SEGMENT_TYPE]: FRAGMENT_RETRY_INTERVAL,
+			[HTTPRequest.INIT_SEGMENT_TYPE]: FRAGMENT_RETRY_INTERVAL,
+			[HTTPRequest.BITSTREAM_SWITCHING_SEGMENT_TYPE]: FRAGMENT_RETRY_INTERVAL,
+			[HTTPRequest.INDEX_SEGMENT_TYPE]: FRAGMENT_RETRY_INTERVAL,
+			[HTTPRequest.OTHER_TYPE]: FRAGMENT_RETRY_INTERVAL
+		};
+	}
 
-    function setLastBitrateCachingInfo(enable, ttl) {
-        lastBitrateCachingInfo.enabled = enable;
-        if (ttl !== undefined && !isNaN(ttl) && typeof (ttl) === 'number') {
-            lastBitrateCachingInfo.ttl = ttl;
-        }
-    }
+	//TODO Should we use Object.define to have setters/getters? makes more readable code on other side.
+	function setBufferOccupancyABREnabled(value) {
+		bufferOccupancyABREnabled = value;
+	}
 
-    function getLastBitrateCachingInfo() {
-        return lastBitrateCachingInfo;
-    }
+	function getBufferOccupancyABREnabled() {
+		return bufferOccupancyABREnabled;
+	}
 
-    function setLastMediaSettingsCachingInfo(enable, ttl) {
-        lastMediaSettingsCachingInfo.enabled = enable;
-        if (ttl !== undefined && !isNaN(ttl) && typeof (ttl) === 'number') {
-            lastMediaSettingsCachingInfo.ttl = ttl;
-        }
-    }
+	//by huaying
+	function setPerceptualContentAwareThroughputABR(value) {
+		perceptualContentAwareThroughputABREnabled = value;
+	}
 
-    function getLastMediaSettingsCachingInfo() {
-        return lastMediaSettingsCachingInfo;
-    }
-
-    function setBufferPruningInterval(value) {
-        bufferPruningInterval = value;
-    }
-
-    function getBufferPruningInterval() {
-        return bufferPruningInterval;
-    }
-
-    function setFragmentRetryAttempts(value) {
-        retryAttempts[HTTPRequest.MEDIA_SEGMENT_TYPE] = value;
-    }
-
-    function setRetryAttemptsForType(type, value) {
-        retryAttempts[type] = value;
-    }
-
-    function getFragmentRetryAttempts() {
-        return retryAttempts[HTTPRequest.MEDIA_SEGMENT_TYPE];
-    }
-
-    function getRetryAttemptsForType(type) {
-        return retryAttempts[type];
-    }
-
-    function setFragmentRetryInterval(value) {
-        retryIntervals[HTTPRequest.MEDIA_SEGMENT_TYPE] = value;
-    }
-
-    function setRetryIntervalForType(type, value) {
-        retryIntervals[type] = value;
-    }
-
-    function getFragmentRetryInterval() {
-        return retryIntervals[HTTPRequest.MEDIA_SEGMENT_TYPE];
-    }
-
-    function getRetryIntervalForType(type) {
-        return retryIntervals[type];
-    }
-
-    function setWallclockTimeUpdateInterval(value) {
-        wallclockTimeUpdateInterval = value;
-    }
-
-    function getWallclockTimeUpdateInterval() {
-        return wallclockTimeUpdateInterval;
-    }
-
-    function setScheduleWhilePaused(value) {
-        scheduleWhilePaused = value;
-    }
-
-    function getScheduleWhilePaused() {
-        return scheduleWhilePaused;
-    }
-
-    function setLiveDelayFragmentCount(value) {
-        liveDelayFragmentCount = value;
-    }
-
-    function setLiveDelay(value) {
-        liveDelay = value;
-    }
-
-    function getLiveDelayFragmentCount() {
-        return liveDelayFragmentCount;
-    }
-
-    function getLiveDelay() {
-        return liveDelay;
-    }
-
-    function setUseManifestDateHeaderTimeSource(value) {
-        useManifestDateHeaderTimeSource = value;
-    }
-
-    function getUseManifestDateHeaderTimeSource() {
-        return useManifestDateHeaderTimeSource;
-    }
-
-    function setUseSuggestedPresentationDelay(value) {
-        useSuggestedPresentationDelay = value;
-    }
-
-    function getUseSuggestedPresentationDelay() {
-        return useSuggestedPresentationDelay;
-    }
-
-    function setUTCTimingSources(value) {
-        UTCTimingSources = value;
-    }
-
-    function getUTCTimingSources() {
-        return UTCTimingSources;
-    }
-
-    function setXHRWithCredentialsForType(type, value) {
-        if (!type) {
-            Object.keys(xhrWithCredentials).forEach(key => {
-                setXHRWithCredentialsForType(key, value);
-            });
-        } else {
-            xhrWithCredentials[type] = !!value;
-        }
-    }
-
-    function getXHRWithCredentialsForType(type) {
-        const useCreds = xhrWithCredentials[type];
-
-        if (useCreds === undefined) {
-            return xhrWithCredentials.default;
-        }
-
-        return useCreds;
-    }
+	function getPerceptualContentAwareThroughputABR() {
+		return perceptualContentAwareThroughputABREnabled;
+	}
 
 
-    function getFastSwitchEnabled() {
-        return fastSwitchEnabled;
-    }
+	function setBandwidthSafetyFactor(value) {
+		bandwidthSafetyFactor = value;
+	}
 
-    function setFastSwitchEnabled(value) {
-        fastSwitchEnabled = value;
-    }
+	function getBandwidthSafetyFactor() {
+		return bandwidthSafetyFactor;
+	}
 
-    function reset() {
-        //TODO need to figure out what props to persist across sessions and which to reset if any.
-        //setup();
-    }
+	function setAbandonLoadTimeout(value) {
+		abandonLoadTimeout = value;
+	}
 
-    instance = {
-        setBufferOccupancyABREnabled: setBufferOccupancyABREnabled,
-        getBufferOccupancyABREnabled: getBufferOccupancyABREnabled,
-        setBandwidthSafetyFactor: setBandwidthSafetyFactor,
-        getBandwidthSafetyFactor: getBandwidthSafetyFactor,
-        setAbandonLoadTimeout: setAbandonLoadTimeout,
-        getAbandonLoadTimeout: getAbandonLoadTimeout,
-        setLastBitrateCachingInfo: setLastBitrateCachingInfo,
-        getLastBitrateCachingInfo: getLastBitrateCachingInfo,
-        setLastMediaSettingsCachingInfo: setLastMediaSettingsCachingInfo,
-        getLastMediaSettingsCachingInfo: getLastMediaSettingsCachingInfo,
-        setStableBufferTime: setStableBufferTime,
-        getStableBufferTime: getStableBufferTime,
-        setBufferTimeAtTopQuality: setBufferTimeAtTopQuality,
-        getBufferTimeAtTopQuality: getBufferTimeAtTopQuality,
-        setBufferTimeAtTopQualityLongForm: setBufferTimeAtTopQualityLongForm,
-        getBufferTimeAtTopQualityLongForm: getBufferTimeAtTopQualityLongForm,
-        setLongFormContentDurationThreshold: setLongFormContentDurationThreshold,
-        getLongFormContentDurationThreshold: getLongFormContentDurationThreshold,
-        setRichBufferThreshold: setRichBufferThreshold,
-        getRichBufferThreshold: getRichBufferThreshold,
-        setBufferToKeep: setBufferToKeep,
-        getBufferToKeep: getBufferToKeep,
-        setBufferPruningInterval: setBufferPruningInterval,
-        getBufferPruningInterval: getBufferPruningInterval,
-        setFragmentRetryAttempts: setFragmentRetryAttempts,
-        getFragmentRetryAttempts: getFragmentRetryAttempts,
-        setRetryAttemptsForType: setRetryAttemptsForType,
-        getRetryAttemptsForType: getRetryAttemptsForType,
-        setFragmentRetryInterval: setFragmentRetryInterval,
-        getFragmentRetryInterval: getFragmentRetryInterval,
-        setRetryIntervalForType: setRetryIntervalForType,
-        getRetryIntervalForType: getRetryIntervalForType,
-        setWallclockTimeUpdateInterval: setWallclockTimeUpdateInterval,
-        getWallclockTimeUpdateInterval: getWallclockTimeUpdateInterval,
-        setScheduleWhilePaused: setScheduleWhilePaused,
-        getScheduleWhilePaused: getScheduleWhilePaused,
-        getUseSuggestedPresentationDelay: getUseSuggestedPresentationDelay,
-        setUseSuggestedPresentationDelay: setUseSuggestedPresentationDelay,
-        setLiveDelayFragmentCount: setLiveDelayFragmentCount,
-        getLiveDelayFragmentCount: getLiveDelayFragmentCount,
-        getLiveDelay: getLiveDelay,
-        setLiveDelay: setLiveDelay,
-        setUseManifestDateHeaderTimeSource: setUseManifestDateHeaderTimeSource,
-        getUseManifestDateHeaderTimeSource: getUseManifestDateHeaderTimeSource,
-        setUTCTimingSources: setUTCTimingSources,
-        getUTCTimingSources: getUTCTimingSources,
-        setXHRWithCredentialsForType: setXHRWithCredentialsForType,
-        getXHRWithCredentialsForType: getXHRWithCredentialsForType,
-        setFastSwitchEnabled: setFastSwitchEnabled,
-        getFastSwitchEnabled: getFastSwitchEnabled,
-        reset: reset
-    };
+	function getAbandonLoadTimeout() {
+		return abandonLoadTimeout;
+	}
 
-    setup();
+	function setStableBufferTime(value) {
+		stableBufferTime = value;
+	}
 
-    return instance;
+	function getStableBufferTime() {
+		return !isNaN(stableBufferTime) ? stableBufferTime : fastSwitchEnabled ? DEFAULT_MIN_BUFFER_TIME_FAST_SWITCH : DEFAULT_MIN_BUFFER_TIME;
+	}
+
+	function setBufferTimeAtTopQuality(value) {
+		bufferTimeAtTopQuality = value;
+	}
+
+	function getBufferTimeAtTopQuality() {
+		return bufferTimeAtTopQuality;
+	}
+
+	function setBufferTimeAtTopQualityLongForm(value) {
+		bufferTimeAtTopQualityLongForm = value;
+	}
+
+	function getBufferTimeAtTopQualityLongForm() {
+		return bufferTimeAtTopQualityLongForm;
+	}
+
+	function setLongFormContentDurationThreshold(value) {
+		longFormContentDurationThreshold = value;
+	}
+
+	function getLongFormContentDurationThreshold() {
+		return longFormContentDurationThreshold;
+	}
+
+	function setRichBufferThreshold(value) {
+		richBufferThreshold = value;
+	}
+
+	function getRichBufferThreshold() {
+		return richBufferThreshold;
+	}
+
+
+	function setBufferToKeep(value) {
+		bufferToKeep = value;
+	}
+
+	function getBufferToKeep() {
+		return bufferToKeep;
+	}
+
+	function setLastBitrateCachingInfo(enable, ttl) {
+		lastBitrateCachingInfo.enabled = enable;
+		if (ttl !== undefined && !isNaN(ttl) && typeof (ttl) === 'number') {
+			lastBitrateCachingInfo.ttl = ttl;
+		}
+	}
+
+	function getLastBitrateCachingInfo() {
+		return lastBitrateCachingInfo;
+	}
+
+	function setLastMediaSettingsCachingInfo(enable, ttl) {
+		lastMediaSettingsCachingInfo.enabled = enable;
+		if (ttl !== undefined && !isNaN(ttl) && typeof (ttl) === 'number') {
+			lastMediaSettingsCachingInfo.ttl = ttl;
+		}
+	}
+
+	function getLastMediaSettingsCachingInfo() {
+		return lastMediaSettingsCachingInfo;
+	}
+
+	function setBufferPruningInterval(value) {
+		bufferPruningInterval = value;
+	}
+
+	function getBufferPruningInterval() {
+		return bufferPruningInterval;
+	}
+
+	function setFragmentRetryAttempts(value) {
+		retryAttempts[HTTPRequest.MEDIA_SEGMENT_TYPE] = value;
+	}
+
+	function setRetryAttemptsForType(type, value) {
+		retryAttempts[type] = value;
+	}
+
+	function getFragmentRetryAttempts() {
+		return retryAttempts[HTTPRequest.MEDIA_SEGMENT_TYPE];
+	}
+
+	function getRetryAttemptsForType(type) {
+		return retryAttempts[type];
+	}
+
+	function setFragmentRetryInterval(value) {
+		retryIntervals[HTTPRequest.MEDIA_SEGMENT_TYPE] = value;
+	}
+
+	function setRetryIntervalForType(type, value) {
+		retryIntervals[type] = value;
+	}
+
+	function getFragmentRetryInterval() {
+		return retryIntervals[HTTPRequest.MEDIA_SEGMENT_TYPE];
+	}
+
+	function getRetryIntervalForType(type) {
+		return retryIntervals[type];
+	}
+
+	function setWallclockTimeUpdateInterval(value) {
+		wallclockTimeUpdateInterval = value;
+	}
+
+	function getWallclockTimeUpdateInterval() {
+		return wallclockTimeUpdateInterval;
+	}
+
+	function setScheduleWhilePaused(value) {
+		scheduleWhilePaused = value;
+	}
+
+	function getScheduleWhilePaused() {
+		return scheduleWhilePaused;
+	}
+
+	function setLiveDelayFragmentCount(value) {
+		liveDelayFragmentCount = value;
+	}
+
+	function setLiveDelay(value) {
+		liveDelay = value;
+	}
+
+	function getLiveDelayFragmentCount() {
+		return liveDelayFragmentCount;
+	}
+
+	function getLiveDelay() {
+		return liveDelay;
+	}
+
+	function setUseManifestDateHeaderTimeSource(value) {
+		useManifestDateHeaderTimeSource = value;
+	}
+
+	function getUseManifestDateHeaderTimeSource() {
+		return useManifestDateHeaderTimeSource;
+	}
+
+	function setUseSuggestedPresentationDelay(value) {
+		useSuggestedPresentationDelay = value;
+	}
+
+	function getUseSuggestedPresentationDelay() {
+		return useSuggestedPresentationDelay;
+	}
+
+	function setUTCTimingSources(value) {
+		UTCTimingSources = value;
+	}
+
+	function getUTCTimingSources() {
+		return UTCTimingSources;
+	}
+
+	function setXHRWithCredentialsForType(type, value) {
+		if (!type) {
+			Object.keys(xhrWithCredentials).forEach(key => {
+				setXHRWithCredentialsForType(key, value);
+			});
+		} else {
+			xhrWithCredentials[type] = !!value;
+		}
+	}
+
+	function getXHRWithCredentialsForType(type) {
+		const useCreds = xhrWithCredentials[type];
+
+		if (useCreds === undefined) {
+			return xhrWithCredentials.default;
+		}
+
+		return useCreds;
+	}
+
+
+	function getFastSwitchEnabled() {
+		return fastSwitchEnabled;
+	}
+
+	function setFastSwitchEnabled(value) {
+		fastSwitchEnabled = value;
+	}
+
+	function reset() {
+		//TODO need to figure out what props to persist across sessions and which to reset if any.
+		//setup();
+	}
+
+	instance = {
+		setBufferOccupancyABREnabled: setBufferOccupancyABREnabled,
+		getBufferOccupancyABREnabled: getBufferOccupancyABREnabled,
+		setBandwidthSafetyFactor: setBandwidthSafetyFactor,
+		getBandwidthSafetyFactor: getBandwidthSafetyFactor,
+		setAbandonLoadTimeout: setAbandonLoadTimeout,
+		getAbandonLoadTimeout: getAbandonLoadTimeout,
+		setLastBitrateCachingInfo: setLastBitrateCachingInfo,
+		getLastBitrateCachingInfo: getLastBitrateCachingInfo,
+		setLastMediaSettingsCachingInfo: setLastMediaSettingsCachingInfo,
+		getLastMediaSettingsCachingInfo: getLastMediaSettingsCachingInfo,
+		setStableBufferTime: setStableBufferTime,
+		getStableBufferTime: getStableBufferTime,
+		setBufferTimeAtTopQuality: setBufferTimeAtTopQuality,
+		getBufferTimeAtTopQuality: getBufferTimeAtTopQuality,
+		setBufferTimeAtTopQualityLongForm: setBufferTimeAtTopQualityLongForm,
+		getBufferTimeAtTopQualityLongForm: getBufferTimeAtTopQualityLongForm,
+		setLongFormContentDurationThreshold: setLongFormContentDurationThreshold,
+		getLongFormContentDurationThreshold: getLongFormContentDurationThreshold,
+		setRichBufferThreshold: setRichBufferThreshold,
+		getRichBufferThreshold: getRichBufferThreshold,
+		setBufferToKeep: setBufferToKeep,
+		getBufferToKeep: getBufferToKeep,
+		setBufferPruningInterval: setBufferPruningInterval,
+		getBufferPruningInterval: getBufferPruningInterval,
+		setFragmentRetryAttempts: setFragmentRetryAttempts,
+		getFragmentRetryAttempts: getFragmentRetryAttempts,
+		setRetryAttemptsForType: setRetryAttemptsForType,
+		getRetryAttemptsForType: getRetryAttemptsForType,
+		setFragmentRetryInterval: setFragmentRetryInterval,
+		getFragmentRetryInterval: getFragmentRetryInterval,
+		setRetryIntervalForType: setRetryIntervalForType,
+		getRetryIntervalForType: getRetryIntervalForType,
+		setWallclockTimeUpdateInterval: setWallclockTimeUpdateInterval,
+		getWallclockTimeUpdateInterval: getWallclockTimeUpdateInterval,
+		setScheduleWhilePaused: setScheduleWhilePaused,
+		getScheduleWhilePaused: getScheduleWhilePaused,
+		getUseSuggestedPresentationDelay: getUseSuggestedPresentationDelay,
+		setUseSuggestedPresentationDelay: setUseSuggestedPresentationDelay,
+		setLiveDelayFragmentCount: setLiveDelayFragmentCount,
+		getLiveDelayFragmentCount: getLiveDelayFragmentCount,
+		getLiveDelay: getLiveDelay,
+		setLiveDelay: setLiveDelay,
+		setUseManifestDateHeaderTimeSource: setUseManifestDateHeaderTimeSource,
+		getUseManifestDateHeaderTimeSource: getUseManifestDateHeaderTimeSource,
+		setUTCTimingSources: setUTCTimingSources,
+		getUTCTimingSources: getUTCTimingSources,
+		setXHRWithCredentialsForType: setXHRWithCredentialsForType,
+		getXHRWithCredentialsForType: getXHRWithCredentialsForType,
+		setFastSwitchEnabled: setFastSwitchEnabled,
+		getFastSwitchEnabled: getFastSwitchEnabled,
+		reset: reset,
+		//    by huaying
+		setPerceptualContentAwareThroughputABR: setPerceptualContentAwareThroughputABR,
+		getPerceptualContentAwareThroughputABR: getPerceptualContentAwareThroughputABR
+	};
+
+	setup();
+
+	return instance;
 }
 
 //TODO see if you can move this and not export and just getter to get default value.

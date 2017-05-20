@@ -363,7 +363,9 @@ function RepresentationController() {
         getStreamProcessor: getStreamProcessor,
         getCurrentRepresentation: getCurrentRepresentation,
         getRepresentationForQuality: getRepresentationForQuality,
-        reset: reset
+        reset: reset,
+    //    byhuaying
+	    updateRepresentations:updateRepresentations
     };
 
     setup();

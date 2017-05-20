@@ -58,6 +58,9 @@ class Segment {
         // element currentTime should be presentationStartTime
         this.wallStartTime = NaN;
         this.representation = null;
+    //    by huaying
+        this.scene=null;
+        this.importance=null;
     }
 }
 

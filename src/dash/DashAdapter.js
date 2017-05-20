@@ -37,6 +37,8 @@ import Event from './vo/Event';
 import FactoryMaker from '../core/FactoryMaker';
 import cea608parser from '../../externals/cea608-parser';
 import * as METRIC_LIST from './constants/DashMetricsList';
+//by huaying
+import RepresentationController from './controllers/RepresentationController';
 
 function DashAdapter() {
 
@@ -326,6 +328,13 @@ function DashAdapter() {
 
         var id,
             data;
+        //by huaying
+        //extract segment information(scene and importance) of the period
+	    var availableRepresentations =RepresentationController.updateRepresentations(adaptation);
+	    var representation=availableRepresentations[0];
+	    var segmentList=representation.adaptation.period.mpd.manifest.Period_asArray[representation.adaptation.period.index].
+		    AdaptationSet_asArray[representation.adaptation.index].Representation_asArray[representation.index].SegmentList;
+
 
         id = mediaInfo.id;
         data = id ? dashManifestModel.getAdaptationForId(id, manifest, periodInfo.index) : dashManifestModel.getAdaptationForIndex(mediaInfo.index, manifest, periodInfo.index);
