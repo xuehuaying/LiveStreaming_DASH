@@ -4,20 +4,20 @@
 
     "validateIndentation": 4,
     "validateQuoteMarks": "'",
-    "disallowMixedSpacesAndTabs": true,
-    "disallowTrailingWhitespace": true,
-    "requireSpaceAfterKeywords": true,
-    "requireSpaceBeforeBinaryOperators": true,
-    "requireSpaceAfterBinaryOperators": true,
-    "requireSpacesInConditionalExpression": true, // Ternary if
-    "requireSpaceBeforeBlockStatements": true,
-    "requireSpacesInForStatement": true,
+    "disallowMixedSpacesAndTabs": false,
+    "disallowTrailingWhitespace": false,
+    "requireSpaceAfterKeywords": false,
+    "requireSpaceBeforeBinaryOperators": false,
+    "requireSpaceAfterBinaryOperators": false,
+    "requireSpacesInConditionalExpression": false, // Ternary if
+    "requireSpaceBeforeBlockStatements": false,
+    "requireSpacesInForStatement": false,
     "requireSpacesInFunctionExpression": {
-        "beforeOpeningCurlyBrace": true
+        "beforeOpeningCurlyBrace": false
     },
-    "disallowSpaceAfterObjectKeys": true,
-    "requireSpaceBeforeObjectValues": true,
-    "requireSemicolons": true,
+    "disallowSpaceAfterObjectKeys": false,
+    "requireSpaceBeforeObjectValues": false,
+    "requireSemicolons": false,
     "validateParameterSeparator": ", ",
     "disallowMultipleVarDecl": {
         "allExcept": ["undefined"]
