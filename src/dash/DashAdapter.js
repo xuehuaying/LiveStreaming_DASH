@@ -37,8 +37,6 @@ import Event from './vo/Event';
 import FactoryMaker from '../core/FactoryMaker';
 import cea608parser from '../../externals/cea608-parser';
 import * as METRIC_LIST from './constants/DashMetricsList';
-//by huaying
-// import RepresentationController from './controllers/RepresentationController';
 
 function DashAdapter() {
 
@@ -47,7 +45,9 @@ function DashAdapter() {
     let instance,
         dashManifestModel,
         periods,
-        adaptations;
+        adaptations,
+        //by huaying
+        segmentImportance;
 
     function setConfig(config) {
         if (!config) return;
@@ -60,6 +60,7 @@ function DashAdapter() {
     function initialize() {
         periods = [];
         adaptations = {};
+        segmentImportance= [];
     }
 
 
@@ -320,7 +321,7 @@ function DashAdapter() {
         return streamProcessor.getIndexHandler().setCurrentTime(value);
     }
 
-    function updateData(manifest, streamProcessor) {
+    function updateData(manifest, streamProcessor, representationController) {
         var periodInfo = getPeriodForStreamInfo(streamProcessor.getStreamInfo());
         var mediaInfo = streamProcessor.getMediaInfo();
         var adaptation = getAdaptationForMediaInfo(mediaInfo);
@@ -329,13 +330,24 @@ function DashAdapter() {
         var id,
             data;
         //by huaying
-        //extract segment information(scene and importance) of the period
-        // var availableRepresentations =RepresentationController.updateRepresentations(adaptation);
-        // var representation=availableRepresentations[0];
-        // var segmentList=representation.adaptation.period.mpd.manifest.Period_asArray[representation.adaptation.period.index].
-		 //    AdaptationSet_asArray[representation.adaptation.index].Representation_asArray[representation.index].SegmentList;
-
-
+        if(type=='video') {
+            var periodSegIdx, s;
+            //extract segment information(scene and importance) of the period
+            var availableRepresentations = representationController.updateRepresentations(adaptation);
+            var representation = availableRepresentations[0];
+            var segmentList = representation.adaptation.period.mpd.manifest.Period_asArray[representation.adaptation.period.index].AdaptationSet_asArray[representation.adaptation.index].Representation_asArray[representation.index].SegmentList;
+            var len = segmentList.SegmentURL_asArray.length;
+            for (periodSegIdx = 0; periodSegIdx < len; periodSegIdx++) {
+                s = segmentList.SegmentURL_asArray[periodSegIdx];
+                if (!segmentImportance[periodSegIdx]) {
+                    segmentImportance.push({
+                        scene: s.scene,
+                        importance: s.importance
+                    });
+                }
+            }
+        }
+        
         id = mediaInfo.id;
         data = id ? dashManifestModel.getAdaptationForId(id, manifest, periodInfo.index) : dashManifestModel.getAdaptationForIndex(mediaInfo.index, manifest, periodInfo.index);
         streamProcessor.getRepresentationController().updateData(data, adaptation, type);
@@ -389,11 +401,16 @@ function DashAdapter() {
 
         return events;
     }
+    //by huaying
+    function getSegmentImportance(){
+        return segmentImportance;
+    }
 
     function reset() {
         periods = [];
         adaptations = {};
     }
+    
 
     instance = {
         initialize: initialize,
@@ -420,7 +437,9 @@ function DashAdapter() {
         getEvent: getEvent,
         setConfig: setConfig,
         reset: reset,
-        metricsList: METRIC_LIST
+        metricsList: METRIC_LIST,
+    //    by huaying
+        getSegmentImportance:getSegmentImportance
     };
 
     return instance;

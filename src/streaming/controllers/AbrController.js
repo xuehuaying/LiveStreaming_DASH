@@ -90,6 +90,9 @@ function AbrController() {
         dashMetrics,
         lastSwitchTime;
 
+    //by huaying
+    var richBuffer;
+
     function setup() {
         autoSwitchBitrate = {video: true, audio: true};
         topQualities = {};
@@ -410,7 +413,9 @@ function AbrController() {
         // If there is enough buffer why not try to stay at high level
         if (bufferState && bufferLevel > bufferState.target) {
             // Are we currently over the buffer target by at least RICH_BUFFER_THRESHOLD?
-            isBufferRich = bufferLevel > ( bufferState.target + mediaPlayerModel.getRichBufferThreshold() );
+            //by huaying
+            richBuffer=bufferState.target + mediaPlayerModel.getRichBufferThreshold();
+            isBufferRich = bufferLevel > richBuffer ;
         }
 
         return isBufferRich;
@@ -445,7 +450,12 @@ function AbrController() {
 
         return isAtTop;
     }
-
+    
+    //by huaying
+    function getRichBuffer() {
+        return richBuffer;
+    }
+    
     function getQualityFor(type, streamInfo) {
         var id = streamInfo.id;
         var quality;
@@ -603,7 +613,9 @@ function AbrController() {
         setWindowResizeEventCalled: setWindowResizeEventCalled,
         initialize: initialize,
         setConfig: setConfig,
-        reset: reset
+        reset: reset,
+        //by huaying
+        getRichBuffer:getRichBuffer
     };
 
     setup();

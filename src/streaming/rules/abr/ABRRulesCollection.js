@@ -71,7 +71,10 @@ function ABRRulesCollection() {
 		//by huaying
 		if (mediaPlayerModel.getPerceptualContentAwareThroughputABR()) {
 			qualitySwitchRules.push(
-				PerceptualContentAwareRule(context).create()
+				PerceptualContentAwareRule(context).create({
+                        metricsModel: metricsModel,
+                        dashMetrics: dashMetrics
+                })
 			);
 		} else if (mediaPlayerModel.getBufferOccupancyABREnabled()) {
 			qualitySwitchRules.push(

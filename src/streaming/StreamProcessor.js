@@ -206,7 +206,7 @@ function StreamProcessor(config) {
         if (mediaInfoArr.indexOf(newMediaInfo) === -1) {
             mediaInfoArr.push(newMediaInfo);
         }
-        adapter.updateData(manifest, this);
+        adapter.updateData(manifest, this,representationController);
     }
 
     function getMediaInfoArr() {

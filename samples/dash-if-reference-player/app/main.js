@@ -172,6 +172,9 @@ app.controller('DashController', function($scope, sources, contributors, FileSav
 
     $scope.video = document.querySelector(".dash-video-player video");
     $scope.player = dashjs.MediaPlayer().create();
+    //by huaying
+    $scope.player.enablePerceptualContentAwareThroughputABR(true);
+    
     $scope.player.initialize($scope.video, null, $scope.autoPlaySelected);
     $scope.player.setFastSwitchEnabled(true);
     $scope.player.attachVideoContainer(document.getElementById("videoContainer"));

@@ -69,6 +69,8 @@ function ListSegmentsGetter(config, isDynamic) {
             seg.mediaRange = s.mediaRange;
             seg.index = s.index;
             seg.indexRange = s.indexRange;
+            seg.scene=s.scene;
+            seg.importance=s.importance;
 
             segments.push(seg);
             seg = null;

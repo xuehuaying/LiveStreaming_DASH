@@ -23,8 +23,8 @@
 					var url="http://192.168.0.175:80/VODs/big_buck_bunny_128k_a_dash.mpd";
 //					var url="http://222.31.64.226:18080/dash/mystream.mpd";
 					var player=dashjs.MediaPlayer().create();
-//					player.enablePerceptualContentAwareThroughputABR(true);
-					player.enableBufferOccupancyABR(true);
+					player.enablePerceptualContentAwareThroughputABR(true);
+//					player.enableBufferOccupancyABR(true);
 					player.initialize(document.querySelector("#videoPlayer"),url,true);
 					
 					
