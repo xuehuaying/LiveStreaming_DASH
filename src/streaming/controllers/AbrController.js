@@ -409,12 +409,15 @@ function AbrController() {
         const bufferState = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
         let isBufferRich = false;
 
+        //by huaying
+        if(bufferState){
+            richBuffer=bufferState.target + mediaPlayerModel.getRichBufferThreshold();
+        }
         // This will happen when another rule tries to switch down from highest quality index
         // If there is enough buffer why not try to stay at high level
+
         if (bufferState && bufferLevel > bufferState.target) {
             // Are we currently over the buffer target by at least RICH_BUFFER_THRESHOLD?
-            //by huaying
-            richBuffer=bufferState.target + mediaPlayerModel.getRichBufferThreshold();
             isBufferRich = bufferLevel > richBuffer ;
         }
 
