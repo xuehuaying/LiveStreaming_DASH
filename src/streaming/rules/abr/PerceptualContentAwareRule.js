@@ -336,30 +336,30 @@ function PerceptualContentAwareRule(config) {
                     richBuffer = abrController.getRichBuffer();
                     if (currentBufferLevel < 0.6 * richBuffer) {
                         switch (nextSegmentInfo.importance) {
-                            case 1:
+                            case 4,5:
                                 safeFactor = 1.4;
                                 bufferAvailable = 0.4;
                                 break;
-                            case 2:
+                            case 6,7:
                                 safeFactor = 1.6;
-                                bufferAvailable = 0.7;
+                                bufferAvailable = 0.6;
                                 break;
-                            case 3:
+                            case 8,9,10:
                                 safeFactor = 1.8;
-                                bufferAvailable = 1;
+                                bufferAvailable = 0.8;
                                 break;
                         }
                     } else {
                         switch (nextSegmentInfo.importance) {
-                            case 1:
+                            case 4,5:
                                 safeFactor = 1.1;
                                 bufferAvailable = 0.2;
                                 break;
-                            case 2:
+                            case 6,7:
                                 safeFactor = 1.2;
                                 bufferAvailable = 0.5;
                                 break;
-                            case 3:
+                            case 8,9,10:
                                 safeFactor = 1.3;
                                 bufferAvailable = 0.7;
                                 break;
