@@ -224,7 +224,7 @@ function PerceptualContentAwareRule(config) {
         if(throughputArray[type]&&throughputArray[type].length>1) {
             const pastTwoThroughputArray = throughputArray[type].slice(-2, throughputArray[type].length);
             if (pastTwoThroughputArray.length > 1) {
-                if (pastTwoThroughputArray[0] > pastTwoThroughputArray[1]) {
+                if (pastTwoThroughputArray[0] >= pastTwoThroughputArray[1]) {
                     if (currentSegmentInfo.scene == nextSegmentInfo.scene) {
                         return true;
                     }
