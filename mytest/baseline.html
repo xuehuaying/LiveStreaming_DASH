@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html ng-app="DashPlayer" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Dash JavaScript Player (By HuaYing)</title>
+    <meta name="viewport" content="width=device-width, height=device-height, user-scalable=no">
+
+    <style>
+        video{
+            width: 640px;
+            height: 480px;
+        }
+    </style>
+
+    <!--Libs-->
+    <script src="app/lib/angular/angular.min.js"></script>
+    <script src="app/lib/angular/angular-resource.min.js"></script>
+    <script src="app/lib/fileSaver/angular-file-saver.bundle.min.js"></script>
+
+    <!-- App -->
+    <script src="../dist/dash.all.debug.js"></script>
+    <script src="app/main.js"></script>
+
+</head>
+<body ng-controller="DashController" >
+<div>
+    <video id="videoPlayer" controls></video>
+    <div>
+        <button class="btn btn-primary" ng-click="DownloadMetrics_BufferLevel('video')">download buffer level</button>
+        <button class="btn btn-primary" ng-click="DownloadMetrics_BitRate('video')">download bit rate</button>
+    </div>
+</div>
+</body>
+</html>
