@@ -59,6 +59,7 @@ const QUALITY_DEFAULT=0;
 
 
 
+
 function PerceptualContentAwareRule(config) {
 
     const context = this.context;
@@ -74,7 +75,8 @@ function PerceptualContentAwareRule(config) {
         adapter,
         richBuffer,
         safeFactor,
-        bufferAvailable;
+        bufferAvailable,
+	    fragmentDuration;
 
     function setup() {
         throughputArray = [];
@@ -198,7 +200,7 @@ function PerceptualContentAwareRule(config) {
 
             if (latency && streamProcessor.getCurrentRepresentationInfo() && streamProcessor.getCurrentRepresentationInfo().fragmentDuration) {
                 latency = latency / 1000;
-                let fragmentDuration = streamProcessor.getCurrentRepresentationInfo().fragmentDuration;
+                fragmentDuration = streamProcessor.getCurrentRepresentationInfo().fragmentDuration;
                 if (latency > fragmentDuration) {
                     return INFINITYBANDWIDTH;
                 } else {
@@ -256,7 +258,7 @@ function PerceptualContentAwareRule(config) {
 
 
     function getQualityForVideo(mediaInfo,estimatedBandwidth,safeFactor,bufferAvailable) {
-        var bitrate=estimatedBandwidth*bufferAvailable/safeFactor;
+        var bitrate=estimatedBandwidth*bufferAvailable/(safeFactor*fragmentDuration);
         const bitrateList = getBitrateList(mediaInfo);
         if (!bitrateList || bitrateList.length === 0) {
             return QUALITY_DEFAULT;
@@ -336,38 +338,52 @@ function PerceptualContentAwareRule(config) {
                     richBuffer = abrController.getRichBuffer();
                     if (currentBufferLevel < 0.6 * richBuffer) {
                         switch (nextSegmentInfo.importance) {
-                            case 4,5:
+                            case 4:
+                            case 5:
                                 safeFactor = 1.4;
-                                bufferAvailable = 0.4;
+                                bufferAvailable = 0.4*currentBufferLevel;
                                 break;
-                            case 6,7:
+                            case 6:
+                            case 7:
                                 safeFactor = 1.6;
-                                bufferAvailable = 0.6;
+                                bufferAvailable = 0.6*currentBufferLevel;
                                 break;
-                            case 8,9,10:
+                            case 8:
+                            case 9:
+                            case 10:
                                 safeFactor = 1.8;
-                                bufferAvailable = 0.8;
+                                bufferAvailable = 0.8*currentBufferLevel;
                                 break;
+                            default:
+                                safeFactor=1.8;
+                                bufferAvailable=currentBufferLevel;
                         }
                     } else {
                         switch (nextSegmentInfo.importance) {
-                            case 4,5:
+	                        case 4:
+	                        case 5:
                                 safeFactor = 1.1;
-                                bufferAvailable = 0.2;
+                                bufferAvailable = 0.2*currentBufferLevel;
                                 break;
-                            case 6,7:
+	                        case 6:
+	                        case 7:
                                 safeFactor = 1.2;
-                                bufferAvailable = 0.5;
+                                bufferAvailable = 0.5*currentBufferLevel;
                                 break;
-                            case 8,9,10:
+	                        case 8:
+	                        case 9:
+	                        case 10:
                                 safeFactor = 1.3;
-                                bufferAvailable = 0.7;
+                                bufferAvailable = 0.7*currentBufferLevel;
                                 break;
+	                        default:
+		                        safeFactor=1.4;
+		                        bufferAvailable=currentBufferLevel;
                         }
                     }
                     //choose the video quality
                     switchRequest.value = getQualityForVideo(mediaInfo, estimatedBandwidth,safeFactor,bufferAvailable);
-                    switchRequest.reason = {safeFactor: safeFactor, bufferAvailable: bufferAvailable};
+                    switchRequest.reason = 'safeFactor:'+ safeFactor+ 'bufferAvailable:'+ bufferAvailable;
                 }else if(mediaType=='audio'){
                     //choose the audio quality
                     switchRequest.value = getQualityForAudio(mediaInfo, estimatedBandwidth);
