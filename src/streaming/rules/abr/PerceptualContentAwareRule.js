@@ -330,77 +330,80 @@ function PerceptualContentAwareRule(config) {
                     var currentSegmentInfo = adapter.getSegmentImportance()[currentSegmentIndex];
                     var nextSegmentInfo = adapter.getSegmentImportance()[currentSegmentIndex + 1];
                     //To avoid the quality oscillation: consider the same scene case
-                    if (needToKeepQuality(mediaType, currentSegmentInfo, nextSegmentInfo)) {
-                        switchRequest.reason = 'Keep the same quality';
+                    if(nextSegmentInfo) {
+	                    if (needToKeepQuality(mediaType, currentSegmentInfo, nextSegmentInfo)) {
+		                    switchRequest.reason = 'Keep the same quality';
+	                    }
+	                    //To consider the segment importance as well as avoid the buffer underrun
+	                    //get the segment importance and assign the safeFactor and available buffer resource
+	                    //TODO:modify the data structure
+	                    richBuffer = abrController.getRichBuffer();
+	                    if (currentBufferLevel < 0.6 * richBuffer) {
+		                    switch (nextSegmentInfo.importance) {
+			                    case 4:
+			                    case 5:
+				                    safeFactor = 1.4;
+				                    bufferAvailable = 0.4 * currentBufferLevel;
+				                    break;
+			                    case 6:
+			                    case 7:
+				                    safeFactor = 1.6;
+				                    bufferAvailable = 0.6 * currentBufferLevel;
+				                    break;
+			                    case 8:
+			                    case 9:
+			                    case 10:
+				                    safeFactor = 1.8;
+				                    bufferAvailable = 0.8 * currentBufferLevel;
+				                    break;
+			                    default:
+				                    safeFactor = 1.8;
+				                    bufferAvailable = currentBufferLevel;
+		                    }
+	                    } else {
+		                    switch (nextSegmentInfo.importance) {
+			                    case 4:
+			                    case 5:
+				                    safeFactor = 1.1;
+				                    bufferAvailable = 0.2 * currentBufferLevel;
+				                    break;
+			                    case 6:
+			                    case 7:
+				                    safeFactor = 1.2;
+				                    bufferAvailable = 0.5 * currentBufferLevel;
+				                    break;
+			                    case 8:
+			                    case 9:
+			                    case 10:
+				                    safeFactor = 1.3;
+				                    bufferAvailable = 0.7 * currentBufferLevel;
+				                    break;
+			                    default:
+				                    safeFactor = 1.4;
+				                    bufferAvailable = currentBufferLevel;
+		                    }
+	                    }
+	                    //choose the video quality
+	                    switchRequest.value = getQualityForVideo(mediaInfo, estimatedBandwidth, safeFactor, bufferAvailable);
+	                    switchRequest.reason = 'safeFactor:' + safeFactor + 'bufferAvailable:' + bufferAvailable;
                     }
-                    //To consider the segment importance as well as avoid the buffer underrun
-                    //get the segment importance and assign the safeFactor and available buffer resource
-                    //TODO:modify the data structure
-                    richBuffer = abrController.getRichBuffer();
-                    if (currentBufferLevel < 0.6 * richBuffer) {
-                        switch (nextSegmentInfo.importance) {
-                            case 4:
-                            case 5:
-                                safeFactor = 1.4;
-                                bufferAvailable = 0.4*currentBufferLevel;
-                                break;
-                            case 6:
-                            case 7:
-                                safeFactor = 1.6;
-                                bufferAvailable = 0.6*currentBufferLevel;
-                                break;
-                            case 8:
-                            case 9:
-                            case 10:
-                                safeFactor = 1.8;
-                                bufferAvailable = 0.8*currentBufferLevel;
-                                break;
-                            default:
-                                safeFactor=1.8;
-                                bufferAvailable=currentBufferLevel;
-                        }
-                    } else {
-                        switch (nextSegmentInfo.importance) {
-	                        case 4:
-	                        case 5:
-                                safeFactor = 1.1;
-                                bufferAvailable = 0.2*currentBufferLevel;
-                                break;
-	                        case 6:
-	                        case 7:
-                                safeFactor = 1.2;
-                                bufferAvailable = 0.5*currentBufferLevel;
-                                break;
-	                        case 8:
-	                        case 9:
-	                        case 10:
-                                safeFactor = 1.3;
-                                bufferAvailable = 0.7*currentBufferLevel;
-                                break;
-	                        default:
-		                        safeFactor=1.4;
-		                        bufferAvailable=currentBufferLevel;
-                        }
-                    }
-                    //choose the video quality
-                    switchRequest.value = getQualityForVideo(mediaInfo, estimatedBandwidth,safeFactor,bufferAvailable);
-                    switchRequest.reason = 'safeFactor:'+ safeFactor+ 'bufferAvailable:'+ bufferAvailable;
                 }else if(mediaType=='audio'){
-                    //choose the audio quality
-                    switchRequest.value = getQualityForAudio(mediaInfo, estimatedBandwidth);
-                    switchRequest.reason = 'Only throughput rule for audio'+'estimatedBandwidth:'+estimatedBandwidth;
+                        //choose the audio quality
+                        switchRequest.value = getQualityForAudio(mediaInfo, estimatedBandwidth);
+                        switchRequest.reason = 'Only throughput rule for audio'+'estimatedBandwidth:'+estimatedBandwidth;
+                        }
+            }
+        }
+                //start to load:if the buffer is not empty, use this way to load for you can set the time delay
+                if (abrController.getAbandonmentStateFor(mediaType) !== AbrController.ABANDON_LOAD) {
+                    if (bufferStateVO.state === BufferController.BUFFER_LOADED || isDynamic) {
+                        streamProcessor.getScheduleController().setTimeToLoadDelay(0);
+                        log('PerceptualContentAwareRule requesting switch to index: ', switchRequest.value, 'type: ', mediaType, 'estimated bandwidth', Math.round(estimatedBandwidth), 'kbps', 'buffer', currentBufferLevel, 'switch reason', switchRequest.reason);
+
                     }
-                }
-            }
-            //start to load:if the buffer is not empty, use this way to load for you can set the time delay
-            if (abrController.getAbandonmentStateFor(mediaType) !== AbrController.ABANDON_LOAD) {
-                if (bufferStateVO.state === BufferController.BUFFER_LOADED || isDynamic) {
-                    streamProcessor.getScheduleController().setTimeToLoadDelay(0);
-                    log('PerceptualContentAwareRule requesting switch to index: ', switchRequest.value, 'type: ', mediaType, 'estimated bandwidth', Math.round(estimatedBandwidth), 'kbps', 'buffer', currentBufferLevel, 'switch reason', switchRequest.reason);
 
                 }
 
-            }
             return switchRequest;
         }
     
