@@ -9,7 +9,9 @@
 			height: 480px;
 		}
 	</style>
+	
 </head>
+	
 <body>
     <div>
         <video id="videoPlayer" controls></video>
@@ -19,8 +21,8 @@
 		(
 				function () {
 //					var url="http://dash.edgesuite.net/akamai/bbb_30fps/bbb_30fps.mpd";
-//					var url="http://222.31.64.20:80/VODs/big_buck_bunny_128k_a_dash_2.mpd";
-					var url="http://192.168.0.175:80/VODs/big_buck_bunny_128k_a_dash.mpd";
+					var url="http://192.168.1.101:80/testvideo/testvideo_modified.mpd";
+//					var url="http://192.168.0.175:80/VODs/big_buck_bunny_128k_a_dash.mpd";
 //					var url="http://222.31.64.226:18080/dash/mystream.mpd";
 					var player=dashjs.MediaPlayer().create();
 					player.enablePerceptualContentAwareThroughputABR(true);
@@ -29,7 +31,9 @@
 					
 					
 				}
+			
 		)();
+		
 		
 	</script>
 

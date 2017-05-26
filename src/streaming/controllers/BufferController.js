@@ -44,9 +44,8 @@ import InitCache from '../utils/InitCache';
 
 const BUFFER_LOADED = 'bufferLoaded';
 const BUFFER_EMPTY = 'bufferStalled';
-// const STALL_THRESHOLD = 0.5;
-//by huaying
-const STALL_THRESHOLD = 2;
+const STALL_THRESHOLD = 0.5;
+
 
 function BufferController(config) {
 

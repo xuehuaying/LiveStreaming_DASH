@@ -55,6 +55,7 @@ const AVERAGE_LATENCY_SAMPLES = AVERAGE_THROUGHPUT_SAMPLE_AMOUNT_VOD;
 const THROUGHPUT_DECREASE_SCALE = 1.3;
 const THROUGHPUT_INCREASE_SCALE = 1.3;
 const QUALITY_DEFAULT=0;
+const INSUFFICIENT_BUFFER=2;
 
 
 
@@ -319,9 +320,9 @@ function PerceptualContentAwareRule(config) {
         } else {
             //To avoid the buffer underrun:consider the insufficient buffer case
             currentBufferLevel = bufferController.getBufferLevel();
-            if (bufferStateVO.state === BufferController.BUFFER_EMPTY && bufferStateDict[mediaType].firstBufferLoadedEvent !== undefined) {
+            if (currentBufferLevel<INSUFFICIENT_BUFFER) {
                 switchRequest.value = 0;
-                switchRequest.reason = 'Buffer is empty';
+                switchRequest.reason = 'Buffer is insufficient';
             } else {
                 if (mediaType == 'video') {
                     //get the next segmentInfo:scene and importance
@@ -391,7 +392,7 @@ function PerceptualContentAwareRule(config) {
                     }
                 }
             }
-            //start to load
+            //start to load:if the buffer is not empty, use this way to load for you can set the time delay
             if (abrController.getAbandonmentStateFor(mediaType) !== AbrController.ABANDON_LOAD) {
                 if (bufferStateVO.state === BufferController.BUFFER_LOADED || isDynamic) {
                     streamProcessor.getScheduleController().setTimeToLoadDelay(0);

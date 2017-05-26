@@ -4,7 +4,7 @@ var app = angular.module('DashPlayer', ['ngFileSaver']);
 
 app.controller('DashController', function($scope, FileSaver, Blob) {
 
-    $scope.url = "http://192.168.0.175:80/VODs/big_buck_bunny_128k_a_dash.mpd";
+    $scope.url = "http://192.168.1.101:80/testvideo/testvideo_modified.mpd";
 
     $scope.video = document.querySelector("#videoPlayer");
     $scope.player = dashjs.MediaPlayer().create();
