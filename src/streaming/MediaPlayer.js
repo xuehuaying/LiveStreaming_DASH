@@ -2026,6 +2026,10 @@ function MediaPlayer() {
         }
     }
 
+    function getImportanceInfoArray() {
+        return adapter.getSegmentImportance();
+    }
+
     instance = {
         initialize: initialize,
         on: on,
@@ -2136,6 +2140,7 @@ function MediaPlayer() {
         attachVideoContainer: attachVideoContainer,
         attachTTMLRenderingDiv: attachTTMLRenderingDiv,
         getCurrentTextTrackIndex: getCurrentTextTrackIndex,
+        getImportanceInfoArray: getImportanceInfoArray,
         reset: reset,
     //    by huaying
 	    enablePerceptualContentAwareThroughputABR:enablePerceptualContentAwareThroughputABR
