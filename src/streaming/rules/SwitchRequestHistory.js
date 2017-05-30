@@ -6,6 +6,8 @@ const SWITCH_REQUEST_HISTORY_DEPTH = 8; // must be > SwitchHistoryRule SAMPLE_SI
 function SwitchRequestHistory() {
     let switchRequests = []; // running total
     let srHistory = []; // history of each switch
+    //by huaying
+    let qualitySwitchHistory=[];//history of each quality switch
 
     function push(switchRequest) {
         if (!switchRequests[switchRequest.oldValue]) {
@@ -25,7 +27,12 @@ function SwitchRequestHistory() {
 
         // Save to history
         srHistory.push({idx: switchRequest.oldValue, noDrop: noDrop, drop: drop, dropSize: dropSize});
-
+        
+        //by huaying
+        //save each video quality switch
+        if(switchRequest.type=="video") {
+            qualitySwitchHistory.push({oldValue: switchRequest.oldValue, newValue: switchRequest.newValue});
+        }
         // Shift earliest switch off srHistory and readjust to keep depth of running totals constant
         if ( srHistory.length > SWITCH_REQUEST_HISTORY_DEPTH ) {
             let srHistoryFirst = srHistory.shift();
@@ -38,6 +45,11 @@ function SwitchRequestHistory() {
     function getSwitchRequests() {
         return switchRequests;
     }
+    //by huaying
+    function getQualitySwitchHistory()
+    {
+        return qualitySwitchHistory;
+    }
 
     function reset() {
         switchRequests = [];
@@ -47,6 +59,8 @@ function SwitchRequestHistory() {
     return {
         push: push,
         getSwitchRequests: getSwitchRequests,
+        //by huaying
+        getQualitySwitchHistory:getQualitySwitchHistory,
         reset: reset
     };
 }

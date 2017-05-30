@@ -196,7 +196,7 @@ function ScheduleController(config) {
 
         if (isStopped || isFragmentProcessingInProgress || !bufferController || playbackController.isPaused() && !scheduleWhilePaused) return;
 
-        validateExecutedFragmentRequest();
+        // validateExecutedFragmentRequest();
 
         const isReplacement = replaceRequestArray.length > 0;
         if ( isReplacement ||
@@ -210,6 +210,7 @@ function ScheduleController(config) {
                     bufferController.switchInitData(streamProcessor.getStreamInfo().id, currentRepresentationInfo.quality);
                 } else {
                     const replacement = replaceRequestArray.shift();
+                    if(replacement)log("huaying find replacement"+replacement.startTime);
 
                     if (fragmentController.isInitializationRequest(replacement)) {
                         getInitRequest(replacement.quality);

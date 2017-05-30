@@ -166,9 +166,12 @@ function RepresentationController() {
         availableRepresentations = updateRepresentations(adaptation);
 
         if (data === null && type !== 'fragmentedText') {
-            averageThroughput = abrController.getAverageThroughput(type);
-            bitrate = averageThroughput || abrController.getInitialBitrateFor(type, streamInfo);
-            quality = abrController.getQualityForBitrate(streamProcessor.getMediaInfo(), bitrate);
+            //by huaying 
+            //the initial quality should be lowest one
+            quality=0;
+            // averageThroughput = abrController.getAverageThroughput(type);
+            // bitrate = averageThroughput || abrController.getInitialBitrateFor(type, streamInfo);
+            // quality = abrController.getQualityForBitrate(streamProcessor.getMediaInfo(), bitrate);
         } else {
             quality = abrController.getQualityFor(type, streamInfo);
         }

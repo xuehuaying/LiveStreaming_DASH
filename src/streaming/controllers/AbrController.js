@@ -300,7 +300,7 @@ function AbrController() {
             if (newQuality > topQualityIdx) {
                 newQuality = topQualityIdx;
             }
-            switchHistoryDict[type].push({oldValue: oldQuality, newValue: newQuality});
+            switchHistoryDict[type].push({type:type,oldValue: oldQuality, newValue: newQuality});
 
             if (newQuality > SwitchRequest.NO_CHANGE && newQuality != oldQuality) {
                 if (abandonmentStateDict[type].state === ALLOW_LOAD || newQuality > oldQuality) {
