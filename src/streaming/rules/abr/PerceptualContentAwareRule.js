@@ -482,17 +482,16 @@ function PerceptualContentAwareRule(config) {
                         richBuffer = abrController.getRichBuffer();
                         if (currentBufferLevel < ASSIGN_THRESHOLD * richBuffer) {
                             switch (nextSegmentInfo.importance) {
-                                case 4:
                                 case 5:
+                                case 6:
                                     safeFactor = 1.2;
                                     bufferAvailable = 0.4 * currentBufferLevel;
                                     break;
-                                case 6:
                                 case 7:
+                                case 8:
                                     safeFactor = 1.4;
                                     bufferAvailable = 0.6 * currentBufferLevel;
                                     break;
-                                case 8:
                                 case 9:
                                 case 10:
                                     safeFactor = 1.5;
@@ -504,17 +503,16 @@ function PerceptualContentAwareRule(config) {
                             }
                         } else {
                             switch (nextSegmentInfo.importance) {
-                                case 4:
                                 case 5:
+                                case 6:
                                     safeFactor = 1.1;
                                     bufferAvailable = 0.2 * currentBufferLevel;
                                     break;
-                                case 6:
                                 case 7:
+                                case 8:
                                     safeFactor = 1.2;
                                     bufferAvailable = 0.5 * currentBufferLevel;
                                     break;
-                                case 8:
                                 case 9:
                                 case 10:
                                     safeFactor = 1.3;
