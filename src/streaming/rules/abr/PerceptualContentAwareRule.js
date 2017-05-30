@@ -484,18 +484,21 @@ function PerceptualContentAwareRule(config) {
                             switch (nextSegmentInfo.importance) {
                                 case 5:
                                 case 6:
-                                    safeFactor = 1.2;
-                                    bufferAvailable = 0.4 * currentBufferLevel;
-                                    break;
                                 case 7:
-                                case 8:
                                     safeFactor = 1.4;
-                                    bufferAvailable = 0.6 * currentBufferLevel;
+                                    bufferAvailable = 0.2 * currentBufferLevel;
+                                    break;
+                                case 8:
+                                    safeFactor = 1.5;
+                                    bufferAvailable = 0.3 * currentBufferLevel;
                                     break;
                                 case 9:
+                                    safeFactor = 1.6;
+                                    bufferAvailable = 0.4 * currentBufferLevel;
+                                    break;
                                 case 10:
-                                    safeFactor = 1.5;
-                                    bufferAvailable = 0.8 * currentBufferLevel;
+                                    safeFactor = 1.7;
+                                    bufferAvailable = 0.6*currentBufferLevel;
                                     break;
                                 default:
                                     safeFactor = 1.1;
@@ -505,18 +508,21 @@ function PerceptualContentAwareRule(config) {
                             switch (nextSegmentInfo.importance) {
                                 case 5:
                                 case 6:
-                                    safeFactor = 1.1;
-                                    bufferAvailable = 0.2 * currentBufferLevel;
-                                    break;
                                 case 7:
+                                    safeFactor = 1.1;
+                                    bufferAvailable = 0.3 * currentBufferLevel;
+                                    break;
                                 case 8:
                                     safeFactor = 1.2;
                                     bufferAvailable = 0.5 * currentBufferLevel;
                                     break;
                                 case 9:
-                                case 10:
                                     safeFactor = 1.3;
                                     bufferAvailable = 0.7 * currentBufferLevel;
+                                    break;
+                                case 10:
+                                    safeFactor = 1.4;
+                                    bufferAvailable = 0.9 * currentBufferLevel;
                                     break;
                                 default:
                                     safeFactor = 1.1;
