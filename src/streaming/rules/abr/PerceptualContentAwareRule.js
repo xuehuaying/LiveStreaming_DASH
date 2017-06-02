@@ -235,12 +235,13 @@ function PerceptualContentAwareRule(config) {
             var len = switchHistory.length;
             var lastValue = switchHistory[len - 1].newValue;
             if (lastValue == -1)lastValue = switchHistory[len - 1].oldValue;
+	        var lastQuality=getQualityFromIndex(mediaInfo,lastValue);
             log('switchHistory:'+ switchHistory[len-1].oldValue + ',' + switchHistory[len-1].newValue);
             if (baseValue > lastValue) {
                 if (currentBufferLevel >= ASSIGN_THRESHOLD * richBuffer)return false;
                 else return true;
             } else if (baseValue < lastValue) {
-                var estimatedBufferLevel = currentBufferLevel - (baseQuality * fragmentDuration / (estimatedBandwidth*1000)) + fragmentDuration;
+                var estimatedBufferLevel = currentBufferLevel - (lastQuality * fragmentDuration / (estimatedBandwidth*1000)) + fragmentDuration;
                 log("Test by huaying:" + "estimatedBufferLevel:" + estimatedBufferLevel+"currentBufferLevel:"+currentBufferLevel+"basequ:"+baseQuality+"dur:"+fragmentDuration);
                 if (estimatedBufferLevel >= KEEP_QUALITY_THRESHOLD)return true;
             }
