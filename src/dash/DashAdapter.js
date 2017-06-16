@@ -47,7 +47,8 @@ function DashAdapter() {
         periods,
         adaptations,
         //by huaying
-        segmentImportance;
+        segmentImportance,
+        saliencyClass;
 
     function setConfig(config) {
         if (!config) return;
@@ -60,7 +61,9 @@ function DashAdapter() {
     function initialize() {
         periods = [];
         adaptations = {};
+        //by huaying
         segmentImportance= [];
+        saliencyClass=[];
     }
 
 
@@ -321,6 +324,27 @@ function DashAdapter() {
         return streamProcessor.getIndexHandler().setCurrentTime(value);
     }
 
+	//    by huaying: classify the segmentImportance of the current period
+	//TODO: we need automatically classifying method here in the future
+	function classifySegmentImportance(segmentImportance){
+        var saliency,level;
+		for(var i=0;i<segmentImportance.length;i++){
+		//    classify manually
+            saliency=segmentImportance[i].importance;
+             if(saliency==10){
+                 level=4;
+             }else if( saliency==9){
+                 level=3;
+             }else if(saliency==8){
+                 level=2;
+             }else{
+                 level=1;
+             }
+			saliencyClass.push(level);
+		}
+    }
+
+
     function updateData(manifest, streamProcessor, representationController) {
         var periodInfo = getPeriodForStreamInfo(streamProcessor.getStreamInfo());
         var mediaInfo = streamProcessor.getMediaInfo();
@@ -346,6 +370,9 @@ function DashAdapter() {
                     });
                 }
             }
+        //    classify the segmentImportance
+            classifySegmentImportance(segmentImportance);
+
         }
         
         id = mediaInfo.id;
@@ -406,6 +433,10 @@ function DashAdapter() {
         return segmentImportance;
     }
 
+    function getSaliencyClass(){
+        return saliencyClass;
+    }
+
     function reset() {
         periods = [];
         adaptations = {};
@@ -439,7 +470,8 @@ function DashAdapter() {
         reset: reset,
         metricsList: METRIC_LIST,
     //    by huaying
-        getSegmentImportance:getSegmentImportance
+        getSegmentImportance:getSegmentImportance,
+        getSaliencyClass:getSaliencyClass
     };
 
     return instance;
