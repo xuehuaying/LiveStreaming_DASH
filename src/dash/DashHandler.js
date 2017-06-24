@@ -403,8 +403,9 @@ function DashHandler(config) {
 
         requestedTime = null;
         index++;
+	    log('Getting the next request at index: ' + (index+1));
 
-        log('Getting the next request at index: ' + index);
+
 
         finished = isMediaFinished(representation);
         if (finished) {

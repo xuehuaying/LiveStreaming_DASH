@@ -41,6 +41,12 @@ import BoxParser from '../utils/BoxParser';
 import FactoryMaker from '../../core/FactoryMaker';
 import Debug from '../../core/Debug';
 import InitCache from '../utils/InitCache';
+//by huaying
+import NextFragmentRequestRule from '../rules/scheduling/NextFragmentRequestRule';
+import DashAdapter from '../../dash/DashAdapter';
+import TextSourceBuffer from '../TextSourceBuffer';
+
+
 
 const BUFFER_LOADED = 'bufferLoaded';
 const BUFFER_EMPTY = 'bufferStalled';
@@ -84,7 +90,10 @@ function BufferController(config) {
         abrController,
         scheduleController,
         mediaPlayerModel,
-        initCache;
+        initCache,
+	    //by huaying
+	    nextFragmentRequestRule;
+
 
     function setup() {
         requiredQuality = AbrController.QUALITY_DEFAULT;
@@ -112,6 +121,14 @@ function BufferController(config) {
         initCache = InitCache(context).getInstance();
         scheduleController = streamProcessor.getScheduleController();
         requiredQuality = abrController.getQualityFor(type, streamProcessor.getStreamInfo());
+	    //by huaying
+	    nextFragmentRequestRule = NextFragmentRequestRule(context).create({
+		    adapter: DashAdapter(context).getInstance(),
+		    sourceBufferController: SourceBufferController(context).getInstance(),
+		    textSourceBuffer: TextSourceBuffer(context).getInstance()
+
+	    });
+
 
         eventBus.on(Events.DATA_UPDATE_COMPLETED, onDataUpdateCompleted, this);
         eventBus.on(Events.INIT_FRAGMENT_LOADED, onInitFragmentLoaded, this);
@@ -158,10 +175,18 @@ function BufferController(config) {
         appendToBuffer(e.chunk);
     }
 
-    function switchInitData(streamId, quality) {
+    function switchInitData(streamProcessor, quality) {
+	    let streamId=streamProcessor.getStreamInfo().id;
         const chunk = initCache.extract(streamId, type, quality);
         if (chunk) {
             appendToBuffer(chunk);
+	        //by huaying
+	        const request = nextFragmentRequestRule.execute(streamProcessor);
+	        let fragmentController = streamProcessor.getFragmentController();
+	        let fragmentModel = fragmentController.getModel(type);
+	        if (request) {
+		        fragmentModel.executeRequest(request);
+	        }
         } else {
             eventBus.trigger(Events.INIT_REQUESTED, {sender: instance});
         }

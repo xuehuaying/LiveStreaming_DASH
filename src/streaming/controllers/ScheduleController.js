@@ -207,7 +207,7 @@ function ScheduleController(config) {
             const getNextFragment = function () {
                 if (currentRepresentationInfo.quality !== lastInitQuality) {
                     lastInitQuality = currentRepresentationInfo.quality;
-                    bufferController.switchInitData(streamProcessor.getStreamInfo().id, currentRepresentationInfo.quality);
+                    bufferController.switchInitData(streamProcessor, currentRepresentationInfo.quality);
                 } else {
                     const replacement = replaceRequestArray.shift();
                     if(replacement)log("huaying find replacement"+replacement.startTime);

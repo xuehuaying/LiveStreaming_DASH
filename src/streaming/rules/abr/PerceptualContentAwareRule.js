@@ -418,12 +418,12 @@ function PerceptualContentAwareRule(config) {
                 }
                 currentQuality = getQualityFromIndex(mediaInfo, i);
                 bufferLeft = getEstimatedBufferLevel(currentBufferLevel, currentQuality, estimatedBandwidth);
-                bufferAvailable=i*fragmentDuration/(estimatedBandwidth*1000*currentBufferLevel);
+                bufferAvailable=currentQuality*fragmentDuration/(estimatedBandwidth*1000*currentBufferLevel);
                 for (let k = nextValue; k >= 0; k--) {
                     if ((i - k) * (currentSaliency - nextSaliency) < 0)break;
                     count++;
                     nextQuality = getQualityFromIndex(mediaInfo, k);
-                    bufferReserve = nextQuality * fragmentDuration / estimatedBandwidth;
+                    bufferReserve = nextQuality * fragmentDuration/(estimatedBandwidth*1000);
                     log("Test by huaying:" + "count:" + count + "bufferLeft in roundD:" + bufferLeft + "bufferReserve in" +
 					        " roundD:" + bufferReserve + "currentValue:" + i + "nextValue:" + k);
                     if (bufferLeft >= bufferReserve)return i;
@@ -728,6 +728,9 @@ function PerceptualContentAwareRule(config) {
                     //get the saliency level of the last segment, current segment and next segment
                     //get the switchRequestValue of the last segment
                     let lastSegmentIndex = streamProcessor.getIndexHandler().getCurrentIndex();
+                    if(lastSegmentIndex==21){
+                        log("Test by huaying:"+"third turning detected!");
+                    }
                     let currentSegmentIndex = lastSegmentIndex+1;
                     let lastSegmentSaliency = adapter.getSaliencyClass()[lastSegmentIndex];
                     let currentSegmentSaliency = adapter.getSaliencyClass()[currentSegmentIndex];
