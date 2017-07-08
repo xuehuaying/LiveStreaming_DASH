@@ -57,10 +57,9 @@ const THROUGHPUT_INCREASE_SCALE = 1.3;
 const QUALITY_DEFAULT=0;
 const INSUFFICIENT_BUFFER=2;
 //version:2
-// const KEEP_QUALITY_THRESHOLD=4;
+const KEEP_QUALITY_THRESHOLD=4;
 const ASSIGN_THRESHOLD=0.6;
-//version:3
-const MIN_BUFFER=4;
+
 
 
 
@@ -80,20 +79,15 @@ function PerceptualContentAwareRule(config) {
         bufferStateDict,
         adapter,
         richBuffer,
-        //version:2
-        // safeFactor,
-        // bufferAvailable,
+        safeFactor,
+         bufferAvailable,
 	    fragmentDuration,
-        estimatedBandwidthArray,
-        //version:3
-        bufferAvailableArray;
+        estimatedBandwidthArray;
 
-    function setup() {
+    function setup(){
         throughputArray = [];
         latencyArray = [];
         estimatedBandwidthArray=[];
-        //version:3
-        bufferAvailableArray=[];
         bufferStateDict={};
         mediaPlayerModel = MediaPlayerModel(context).getInstance();
         adapter = DashAdapter(context).getInstance();
@@ -235,30 +229,27 @@ function PerceptualContentAwareRule(config) {
         }
     }
 
+    function needToKeepQuality(mediaInfo,switchRequest,currentBufferLevel,richBuffer,estimatedBandwidth,switchHistory){
+        var baseValue=switchRequest.value;
+        var baseQuality=getQualityFromIndex(mediaInfo,baseValue);
+        if(switchHistory) {
+            var len = switchHistory.length;
+            var lastValue = switchHistory[len - 1].newValue;
+            if (lastValue == -1)lastValue = switchHistory[len - 1].oldValue;
+	        var lastQuality=getQualityFromIndex(mediaInfo,lastValue);
+            log('switchHistory:'+ switchHistory[len-1].oldValue + ',' + switchHistory[len-1].newValue);
+            if (baseValue > lastValue) {
+                if (currentBufferLevel >= ASSIGN_THRESHOLD * richBuffer)return false;
+                else return true;
+            } else if (baseValue < lastValue) {
+                var estimatedBufferLevel = currentBufferLevel - (lastQuality * fragmentDuration / (estimatedBandwidth*1000)) + fragmentDuration;
+                log("Test by huaying:" + "estimatedBufferLevel:" + estimatedBufferLevel+"currentBufferLevel:"+currentBufferLevel+"basequ:"+baseQuality+"dur:"+fragmentDuration);
+                if (estimatedBufferLevel >= KEEP_QUALITY_THRESHOLD)return true;
+            }
+        }
 
-
-    //version:2
-    // function needToKeepQuality(mediaInfo,switchRequest,currentBufferLevel,richBuffer,estimatedBandwidth,switchHistory){
-    //     var baseValue=switchRequest.value;
-    //     var baseQuality=getQualityFromIndex(mediaInfo,baseValue);
-    //     if(switchHistory) {
-    //         var len = switchHistory.length;
-    //         var lastValue = switchHistory[len - 1].newValue;
-    //         if (lastValue == -1)lastValue = switchHistory[len - 1].oldValue;
-	 //        var lastQuality=getQualityFromIndex(mediaInfo,lastValue);
-    //         log('switchHistory:'+ switchHistory[len-1].oldValue + ',' + switchHistory[len-1].newValue);
-    //         if (baseValue > lastValue) {
-    //             if (currentBufferLevel >= ASSIGN_THRESHOLD * richBuffer)return false;
-    //             else return true;
-    //         } else if (baseValue < lastValue) {
-    //             var estimatedBufferLevel = currentBufferLevel - (lastQuality * fragmentDuration / (estimatedBandwidth*1000)) + fragmentDuration;
-    //             log("Test by huaying:" + "estimatedBufferLevel:" + estimatedBufferLevel+"currentBufferLevel:"+currentBufferLevel+"basequ:"+baseQuality+"dur:"+fragmentDuration);
-    //             if (estimatedBufferLevel >= KEEP_QUALITY_THRESHOLD)return true;
-    //         }
-    //     }
-    //
-    //     return false;
-    // }
+        return false;
+    }
 
     function getBitrateList(mediaInfo) {
         if (!mediaInfo || !mediaInfo.bitrateList) return null;
@@ -288,51 +279,24 @@ function PerceptualContentAwareRule(config) {
             return 1000000;
         return bitrateList[index].bitrate;
     }
-    //version:3
-    function getEstimatedBufferLevel(buffer,quality,estimatedBandwidth){
-        return buffer - (quality* fragmentDuration / (estimatedBandwidth*1000)) + fragmentDuration;
-    }
-    //version:3
-    function getQualityForVideo(mediaInfo,estimatedBandwidth,buffer){
-        var bitrate=estimatedBandwidth*buffer/fragmentDuration;
-	    const bitrateList = getBitrateList(mediaInfo);
-	        if (!bitrateList || bitrateList.length === 0) return QUALITY_DEFAULT;
-	        for(let i=bitrateList.length-1;i>=0;i--){
-	            const bitrateInfo=bitrateList[i];
-	            if(bitrate*1000>=bitrateInfo.bitrate)return i;
-            }
-            return 0;
-    }
-	//version:3
-	//search for a quality to meet with the minimum buffer requirement
-	function getQualityForMinimumBuffer(mediaInfo,value,estimatedBandwidth,currentBufferLevel){
-        let quality,estimatedBufferLevel;
-        for(let i=value;i>=0;i--){
-            quality=getQualityFromIndex(mediaInfo,i);
-	        estimatedBufferLevel=getEstimatedBufferLevel(currentBufferLevel,quality,estimatedBandwidth);
-	        if(estimatedBufferLevel>=MIN_BUFFER)return i;
+
+    function getQualityForVideo(mediaInfo,estimatedBandwidth,safeFactor,bufferAvailable) {
+        var bitrate=estimatedBandwidth*bufferAvailable/(safeFactor*fragmentDuration);
+        // var bitrate=estimatedBandwidth*bufferAvailable/fragmentDuration;
+        const bitrateList = getBitrateList(mediaInfo);
+        if (!bitrateList || bitrateList.length === 0) {
+            return QUALITY_DEFAULT;
         }
-        return 0;
-	}
 
+        for (let i = bitrateList.length - 1; i >= 0; i--) {
+            const bitrateInfo = bitrateList[i];
+            if (bitrate * 1000 >= bitrateInfo.bitrate) {
+                return i;
+            }
+         }
+            return 0;
+        }
 
-	//version:2
-    // function getQualityForVideo(mediaInfo,estimatedBandwidth,safeFactor,bufferAvailable) {
-    //     var bitrate=estimatedBandwidth*bufferAvailable/(safeFactor*fragmentDuration);
-    //     // var bitrate=estimatedBandwidth*bufferAvailable/fragmentDuration;
-    //     const bitrateList = getBitrateList(mediaInfo);
-    //     if (!bitrateList || bitrateList.length === 0) {
-    //         return QUALITY_DEFAULT;
-    //     }
-    //
-    //     for (let i = bitrateList.length - 1; i >= 0; i--) {
-    //         const bitrateInfo = bitrateList[i];
-    //         if (bitrate * 1000 >= bitrateInfo.bitrate) {
-    //             return i;
-    //         }
-    //      }
-    //         return 0;
-    //     }
     function getQualityForAudio(mediaInfo,estimatedBandwidth){
         var bitrate=estimatedBandwidth;
         const bitrateList = getBitrateList(mediaInfo);
@@ -349,348 +313,8 @@ function PerceptualContentAwareRule(config) {
         return 0;
     }
 
-	//version:3
-	function getInitialQualityForSailency(foreSaliency,backSaliency,value){
-        let initialValue;
-		// let maxValue=0;
-		// const bitrateList=getBitrateList(mediaInfo);
-		//
-		// if(bitrateList && bitrateList.length>0)
-		// {
-	     //    maxValue=bitrateList.length-1;
-		// }
-		// log("Test by huaying:" + "maxValue:" + maxValue);
-        if(backSaliency>=foreSaliency)initialValue=Math.min(value+backSaliency-foreSaliency,5);
-        else initialValue=Math.max(value-(foreSaliency-backSaliency),0);
-        return initialValue;
-
-    }
-    //version:3
-    function adjustQualityForCurrentBuffer(mediaInfo,initialValue,estimatedBandwidth,currentBufferLevel,currentSegmentIndex){
-	    let bufferAvailable=bufferAvailableArray[currentSegmentIndex];
-	    let currentValue=initialValue;
-	    if(initialValue) {
-		    let initialQuality = getQualityFromIndex(mediaInfo, initialValue);
-		    if (estimatedBandwidth && currentBufferLevel) {
-			    bufferAvailable = initialQuality * fragmentDuration / (estimatedBandwidth * 1000 * currentBufferLevel);
-			    log("Test by huaying:" + "bufferAvailable factor in roundB:" + bufferAvailable);
-			    if (bufferAvailable > 1) {
-				    if (currentValue) {
-					    bufferAvailable = 1;
-					    currentValue = getQualityForVideo(mediaInfo, estimatedBandwidth, bufferAvailable * currentBufferLevel);
-				    }
-
-			    }
-		    }
-	    }
-        return currentValue;
-    }
-    //version:3
-    function adjustQualityForMinimumBuffer(mediaInfo,value,estimatedBandwidth,currentBufferLevel,currentSegmentIndex){
-        let currentValue=value;
-        let bufferAvailable=bufferAvailableArray[currentSegmentIndex]||1;
-        let quality=getQualityFromIndex(mediaInfo,value);
-	    let estimatedBufferLevel = getEstimatedBufferLevel(currentBufferLevel,quality,estimatedBandwidth);
-	    log("Test by huaying:" + "estimatedBufferLevel in roundC:" + estimatedBufferLevel);
-	    if(estimatedBufferLevel<MIN_BUFFER)
-        {
-            if(currentValue){
-	        bufferAvailable=1;
-	        currentValue=getQualityForMinimumBuffer(mediaInfo,value,estimatedBandwidth,currentBufferLevel);
-            }
-        }
-	    log("Test by huaying:" + "bufferAvailable factor in roundC:" + bufferAvailable);
-	    return currentValue;
-    }
-	//version:3
-    function adjustQualityForNextSaliency(mediaInfo,lastSaliency,currentSaliency,nextSaliency,value,lastValue,estimatedBandwidth,currentBufferLevel,currentSegmentIndex){
-        let bufferLeft,bufferReserve;
-        let currentQuality,nextQuality;
-        let count=0;//for test
-        let currentValue=value;
-	    let nextValue=getInitialQualityForSailency(currentSaliency,nextSaliency,currentValue);
-	    let bufferAvailable=bufferAvailableArray[currentSegmentIndex]||1;
-        if(currentSaliency!=lastSaliency) {
-            for (let i = value; i > 0; i--) {
-                if ((i - lastValue) * (value - lastValue) < 0) {
-                    currentValue = i + 1;
-                    break;
-                }
-                currentQuality = getQualityFromIndex(mediaInfo, i);
-                bufferLeft = getEstimatedBufferLevel(currentBufferLevel, currentQuality, estimatedBandwidth);
-                bufferAvailable=currentQuality*fragmentDuration/(estimatedBandwidth*1000*currentBufferLevel);
-                for (let k = nextValue; k >= 0; k--) {
-                    if ((i - k) * (currentSaliency - nextSaliency) < 0)break;
-                    count++;
-                    nextQuality = getQualityFromIndex(mediaInfo, k);
-                    bufferReserve = nextQuality * fragmentDuration/(estimatedBandwidth*1000);
-                    log("Test by huaying:" + "count:" + count + "bufferLeft in roundD:" + bufferLeft + "bufferReserve in" +
-					        " roundD:" + bufferReserve + "currentValue:" + i + "nextValue:" + k);
-                    if (bufferLeft >= bufferReserve)return i;
-                }
-            }
-        }
-	    return currentValue;
-    }
-
-
-    //version:1
-    // function getMaxIndex(rulesContext) {
-    //     var estimatedBandwidth,currentBufferLevel;
-    //
-    //
-    //     const mediaInfo = rulesContext.getMediaInfo();
-    //     const mediaType = mediaInfo.type;
-    //     const metrics = metricsModel.getReadOnlyMetricsFor(mediaType);
-    //     const streamProcessor = rulesContext.getStreamProcessor();
-    //     const abrController = streamProcessor.getABRController();
-    //     const bufferController = streamProcessor.getBufferController();
-    //     const isDynamic = streamProcessor.isDynamic();
-    //     const lastRequest = dashMetrics.getCurrentHttpRequest(metrics);
-    //     const bufferStateVO = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
-    //     const hasRichBuffer = rulesContext.hasRichBuffer();
-    //     const switchRequest = SwitchRequest(context).create();
-    //
-    //     if (!metrics || !lastRequest || lastRequest.type !== HTTPRequest.MEDIA_SEGMENT_TYPE || !bufferStateVO || hasRichBuffer) {
-    //         return switchRequest;
-    //     }
-    //
-    //     setBufferInfo(mediaType, bufferStateVO.state);
-    //
-    //     //get the estimated bandwidth
-    //     estimatedBandwidth = getEstimatedBandwidth(mediaType,lastRequest, streamProcessor,isDynamic,abrController);
-    //     //To avoid the buffer underrun:consider the long latency case
-    //     if (estimatedBandwidth == INFINITYBANDWIDTH) {
-    //         switchRequest.value = 0;
-    //         switchRequest.reason = 'The latency is too long.';
-    //     } else {
-    //         //To avoid the buffer underrun:consider the insufficient buffer case
-    //         currentBufferLevel = bufferController.getBufferLevel();
-    //         if (currentBufferLevel<INSUFFICIENT_BUFFER) {
-    //             switchRequest.value = 0;
-    //             switchRequest.reason = 'Buffer is insufficient';
-    //         } else {
-    //             if (mediaType == 'video') {
-    //                 //get the next segmentInfo:scene and importance
-    //                 var currentSegmentIndex = streamProcessor.getIndexHandler().getCurrentIndex();
-    //                 var currentSegmentInfo = adapter.getSegmentImportance()[currentSegmentIndex];
-    //                 var nextSegmentInfo = adapter.getSegmentImportance()[currentSegmentIndex + 1];
-    //                 //To avoid the quality oscillation: consider the same scene case
-    //                 if(nextSegmentInfo) {
-    //                     if (needToKeepQuality(currentSegmentInfo, nextSegmentInfo)) {
-    //                         switchRequest.reason = 'Keep the same quality';
-    //                     } else {
-    //
-    //                         //To consider the segment importance as well as avoid the buffer underrun
-    //                         //get the segment importance and assign the safeFactor and available buffer resource
-    //                         //TODO:modify the data structure
-    //                         richBuffer = abrController.getRichBuffer();
-    //                         if (currentBufferLevel < 0.6 * richBuffer) {
-    //                             switch (nextSegmentInfo.importance) {
-    //                                 case 4:
-    //                                 case 5:
-    //                                     safeFactor = 1.2;
-    //                                     bufferAvailable = 0.4 * currentBufferLevel;
-    //                                     break;
-    //                                 case 6:
-    //                                 case 7:
-    //                                     safeFactor = 1.4;
-    //                                     bufferAvailable = 0.6 * currentBufferLevel;
-    //                                     break;
-    //                                 case 8:
-    //                                 case 9:
-    //                                 case 10:
-    //                                     safeFactor = 1.5;
-    //                                     bufferAvailable = 0.8 * currentBufferLevel;
-    //                                     break;
-    //                                 default:
-    //                                     safeFactor = 1.1;
-    //                                     bufferAvailable = currentBufferLevel;
-    //                             }
-    //                         } else {
-    //                             switch (nextSegmentInfo.importance) {
-    //                                 case 4:
-    //                                 case 5:
-    //                                     safeFactor = 1.1;
-    //                                     bufferAvailable = 0.2 * currentBufferLevel;
-    //                                     break;
-    //                                 case 6:
-    //                                 case 7:
-    //                                     safeFactor = 1.2;
-    //                                     bufferAvailable = 0.5 * currentBufferLevel;
-    //                                     break;
-    //                                 case 8:
-    //                                 case 9:
-    //                                 case 10:
-    //                                     safeFactor = 1.3;
-    //                                     bufferAvailable = 0.7 * currentBufferLevel;
-    //                                     break;
-    //                                 default:
-    //                                     safeFactor = 1.1;
-    //                                     bufferAvailable = currentBufferLevel;
-    //                             }
-    //                         }
-    //                         //choose the video quality
-    //                         switchRequest.value = getQualityForVideo(mediaInfo, estimatedBandwidth, safeFactor, bufferAvailable);
-    //                         // switchRequest.value = getQualityForVideo(mediaInfo, estimatedBandwidth, bufferAvailable);
-    //                         switchRequest.reason = 'safeFactor:' + safeFactor + 'bufferAvailable:' + bufferAvailable;
-    //                     }
-    //                 }
-    //             }else if(mediaType=='audio'){
-    //                     //choose the audio quality
-    //                     switchRequest.value = getQualityForAudio(mediaInfo, estimatedBandwidth);
-    //                     switchRequest.reason = 'Only throughput rule for audio'+'estimatedBandwidth:'+estimatedBandwidth;
-    //                     }
-    //         }
-    //     }
-    //             //start to load:if the buffer is not empty, use this way to load for you can set the time delay
-    //             if (abrController.getAbandonmentStateFor(mediaType) !== AbrController.ABANDON_LOAD) {
-    //                 if (bufferStateVO.state === BufferController.BUFFER_LOADED || isDynamic) {
-    //                     streamProcessor.getScheduleController().setTimeToLoadDelay(0);
-    //                     log('PerceptualContentAwareRule requesting switch to index: ', switchRequest.value, 'type: ', mediaType, 'estimated bandwidth', Math.round(estimatedBandwidth), 'kbps', 'buffer', currentBufferLevel, 'switch reason', switchRequest.reason);
-    //
-    //                 }
-    //
-    //             }
-    //
-    //         return switchRequest;
-    //     }
-
-    //version:2
-    // function getMaxIndex(rulesContext) {
-    //     var estimatedBandwidth,currentBufferLevel;
-    //
-    //
-    //     const mediaInfo = rulesContext.getMediaInfo();
-    //     const mediaType = mediaInfo.type;
-    //     const metrics = metricsModel.getReadOnlyMetricsFor(mediaType);
-    //     const streamProcessor = rulesContext.getStreamProcessor();
-    //     const abrController = streamProcessor.getABRController();
-    //     const bufferController = streamProcessor.getBufferController();
-    //     const isDynamic = streamProcessor.isDynamic();
-    //     const lastRequest = dashMetrics.getCurrentHttpRequest(metrics);
-    //     const bufferStateVO = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
-    //     const switchHistory = rulesContext.getSwitchHistory();
-    //     const qualitySwitchHistory=switchHistory.getQualitySwitchHistory();
-    //     const switchRequest = SwitchRequest(context).create();
-    //
-    //     if (!metrics || !lastRequest || lastRequest.type !== HTTPRequest.MEDIA_SEGMENT_TYPE || !bufferStateVO) {
-    //         return switchRequest;
-    //     }
-    //
-    //     setBufferInfo(mediaType, bufferStateVO.state);
-    //
-    //     //get the estimated bandwidth
-    //     estimatedBandwidth = getEstimatedBandwidth(mediaType,lastRequest, streamProcessor,isDynamic,abrController);
-    //     //To avoid the buffer underrun:consider the long latency case
-    //     if (estimatedBandwidth == INFINITYBANDWIDTH) {
-    //         switchRequest.value = 0;
-    //         switchRequest.reason = 'The latency is too long.';
-    //     } else {
-    //         //To avoid the buffer underrun:consider the insufficient buffer case
-    //         currentBufferLevel = bufferController.getBufferLevel();
-    //         if (currentBufferLevel<INSUFFICIENT_BUFFER) {
-    //             switchRequest.value = 0;
-    //             switchRequest.reason = 'Buffer is insufficient';
-    //         } else {
-    //             if (mediaType == 'video') {
-    //                 //get the next segmentInfo:scene and importance
-    //                 var currentSegmentIndex = streamProcessor.getIndexHandler().getCurrentIndex();
-    //                 var currentSegmentInfo = adapter.getSegmentImportance()[currentSegmentIndex];
-    //                 var nextSegmentInfo = adapter.getSegmentImportance()[currentSegmentIndex + 1];
-    //                 if(nextSegmentInfo) {
-    //                     //First,choose the quality
-    //                     //To consider the segment importance as well as avoid the buffer underrun
-    //                     //get the segment importance and assign the safeFactor and available buffer resource
-    //                     //TODO:modify the data structure
-    //                     richBuffer = abrController.getRichBuffer();
-    //                     if (currentBufferLevel < ASSIGN_THRESHOLD * richBuffer) {
-    //                         switch (nextSegmentInfo.importance) {
-    //                             case 5:
-    //                             case 6:
-    //                             case 7:
-    //                                 safeFactor = 1.4;
-    //                                 bufferAvailable = 0.2 * currentBufferLevel;
-    //                                 break;
-    //                             case 8:
-    //                                 safeFactor = 1.5;
-    //                                 bufferAvailable = 0.3 * currentBufferLevel;
-    //                                 break;
-    //                             case 9:
-    //                                 safeFactor = 1.6;
-    //                                 bufferAvailable = 0.4 * currentBufferLevel;
-    //                                 break;
-    //                             case 10:
-    //                                 safeFactor = 1.7;
-    //                                 bufferAvailable = 0.6*currentBufferLevel;
-    //                                 break;
-    //                             default:
-    //                                 safeFactor = 1.1;
-    //                                 bufferAvailable = currentBufferLevel;
-    //                         }
-    //                     } else {
-    //                         switch (nextSegmentInfo.importance) {
-    //                             case 5:
-    //                             case 6:
-    //                             case 7:
-    //                                 safeFactor = 1.1;
-    //                                 bufferAvailable = 0.3 * currentBufferLevel;
-    //                                 break;
-    //                             case 8:
-    //                                 safeFactor = 1.2;
-    //                                 bufferAvailable = 0.5 * currentBufferLevel;
-    //                                 break;
-    //                             case 9:
-    //                                 safeFactor = 1.3;
-    //                                 bufferAvailable = 0.7 * currentBufferLevel;
-    //                                 break;
-    //                             case 10:
-    //                                 safeFactor = 1.4;
-    //                                 bufferAvailable = 0.9 * currentBufferLevel;
-    //                                 break;
-    //                             default:
-    //                                 safeFactor = 1.1;
-    //                                 bufferAvailable = currentBufferLevel;
-    //                         }
-    //                     }
-    //                     //choose the video quality
-    //                     switchRequest.value = getQualityForVideo(mediaInfo, estimatedBandwidth, safeFactor, bufferAvailable);
-    //                     switchRequest.reason = 'safeFactor:' + safeFactor + 'bufferAvailable:' + bufferAvailable;
-    //
-    //                     //Second, to see if need to keep quality to avoid the quality oscillation: consider the same scene case
-    //                     if(currentSegmentInfo.scene==nextSegmentInfo.scene) {
-    //
-    //                         if (needToKeepQuality(mediaInfo, switchRequest, currentBufferLevel, richBuffer, estimatedBandwidth,qualitySwitchHistory)) {
-    //                             switchRequest.value = -1;
-    //                             switchRequest.reason = 'Keep the same quality';
-    //                         }
-    //                     }
-    //
-    //                 }
-    //             }else if(mediaType=='audio'){
-    //                     //choose the audio quality
-    //                     switchRequest.value = getQualityForAudio(mediaInfo, estimatedBandwidth);
-    //                     switchRequest.reason = 'Only throughput rule for audio'+'estimatedBandwidth:'+estimatedBandwidth;
-    //                     }
-    //         }
-    //     }
-    //             //start to load:if the buffer is not empty, use this way to load for you can set the time delay
-    //             if (abrController.getAbandonmentStateFor(mediaType) !== AbrController.ABANDON_LOAD) {
-    //                 if (bufferStateVO.state === BufferController.BUFFER_LOADED || isDynamic) {
-    //                     streamProcessor.getScheduleController().setTimeToLoadDelay(0);
-    //                     log('PerceptualContentAwareRule requesting switch to index: ', switchRequest.value, 'type: ', mediaType, 'estimated bandwidth', Math.round(estimatedBandwidth), 'kbps', 'buffer', currentBufferLevel, 'switch reason', switchRequest.reason);
-    //
-    //                 }
-    //
-    //             }
-    //
-    //
-    //         return switchRequest;
-    //     }
-
-    //version:3
     function getMaxIndex(rulesContext) {
-        let estimatedBandwidth,currentBufferLevel;
+        var estimatedBandwidth,currentBufferLevel;
 
 
         const mediaInfo = rulesContext.getMediaInfo();
@@ -709,9 +333,9 @@ function PerceptualContentAwareRule(config) {
         if (!metrics || !lastRequest || lastRequest.type !== HTTPRequest.MEDIA_SEGMENT_TYPE || !bufferStateVO) {
             return switchRequest;
         }
-        //get the current buffer level
-	    currentBufferLevel = bufferController.getBufferLevel();
+
         setBufferInfo(mediaType, bufferStateVO.state);
+
         //get the estimated bandwidth
         estimatedBandwidth = getEstimatedBandwidth(mediaType,lastRequest, streamProcessor,isDynamic,abrController);
         //To avoid the buffer underrun:consider the long latency case
@@ -720,49 +344,84 @@ function PerceptualContentAwareRule(config) {
             switchRequest.reason = 'The latency is too long.';
         } else {
             //To avoid the buffer underrun:consider the insufficient buffer case
+            currentBufferLevel = bufferController.getBufferLevel();
             if (currentBufferLevel<INSUFFICIENT_BUFFER) {
                 switchRequest.value = 0;
                 switchRequest.reason = 'Buffer is insufficient';
             } else {
                 if (mediaType == 'video') {
-                    //get the saliency level of the last segment, current segment and next segment
-                    //get the switchRequestValue of the last segment
-                    let lastSegmentIndex = streamProcessor.getIndexHandler().getCurrentIndex();
-                    if(lastSegmentIndex==21){
-                        log("Test by huaying:"+"third turning detected!");
-                    }
-                    let currentSegmentIndex = lastSegmentIndex+1;
-                    let lastSegmentSaliency = adapter.getSaliencyClass()[lastSegmentIndex];
-                    let currentSegmentSaliency = adapter.getSaliencyClass()[currentSegmentIndex];
-                    let nextSegmentSaliency=adapter.getSaliencyClass()[currentSegmentIndex+1];
-	                bufferAvailableArray[currentSegmentIndex]=1;
-	                let len,lastValue;
-                    if(qualitySwitchHistory){
-                        len=qualitySwitchHistory.length;
-                        lastValue=qualitySwitchHistory[len - 1].newValue;
-	                    if (lastValue == -1)lastValue = qualitySwitchHistory[len - 1].oldValue;
-                    }
-                    if(currentSegmentSaliency) {
-	                    if (nextSegmentSaliency) {
-		                    //First,get the initial quality by last segment saliency
-		                    switchRequest.value = getInitialQualityForSailency(lastSegmentSaliency, currentSegmentSaliency, lastValue);
-		                    log("Test by huaying:" + "The quality class in roundA:" + switchRequest.value);
-		                    //Second,check if the initial assigned quality meets the current buffer,if not, adjust it
-		                    switchRequest.value = adjustQualityForCurrentBuffer(mediaInfo, switchRequest.value, estimatedBandwidth, currentBufferLevel, currentSegmentIndex);
-		                    log("Test by huaying:" + "The quality class in roundB:" + switchRequest.value);
-		                    //Third,check if the currentBuffer constrained quality meets the minimum buffer,if not,
-		                    // adjust it
-		                    switchRequest.value = adjustQualityForMinimumBuffer(mediaInfo, switchRequest.value, estimatedBandwidth, currentBufferLevel, currentSegmentIndex);
-		                    log("Test by huaying:" + "The quality class in roundC:" + switchRequest.value);
-		                    //Lastly,check if the current quality meets the saliency requirement for next segment,if
-		                    // not,adjust it
-                            switchRequest.value = adjustQualityForNextSaliency(mediaInfo, lastSegmentSaliency, currentSegmentSaliency, nextSegmentSaliency, switchRequest.value, lastValue, estimatedBandwidth, currentBufferLevel,currentSegmentIndex);
-		                    switchRequest.reason="SaliencyRule:"+"estimated bandwidth"+ Math.round(estimatedBandwidth)+"kbps"+"buffer:"+currentBufferLevel+"buffer available:"+bufferAvailableArray[currentSegmentIndex];
-                            log("Test by huaying:" + "The quality class in roundD:" + switchRequest.value);
-	                    } else {
-		                    switchRequest.value = getQualityForVideo(mediaInfo, estimatedBandwidth, currentBufferLevel);
-		                    switchRequest.reason = "LastSegmentRule";
-	                    }
+                    //get the next segmentInfo:scene and importance
+                    var currentSegmentIndex = streamProcessor.getIndexHandler().getCurrentIndex();
+                    var currentSegmentInfo = adapter.getSegmentImportance()[currentSegmentIndex];
+                    var nextSegmentInfo = adapter.getSegmentImportance()[currentSegmentIndex + 1];
+                    if(nextSegmentInfo) {
+                        //First,choose the quality
+                        //To consider the segment importance as well as avoid the buffer underrun
+                        //get the segment importance and assign the safeFactor and available buffer resource
+                        //TODO:modify the data structure
+                        richBuffer = abrController.getRichBuffer();
+                        if (currentBufferLevel < ASSIGN_THRESHOLD * richBuffer) {
+                            switch (nextSegmentInfo.importance) {
+                                case 5:
+                                case 6:
+                                case 7:
+                                    safeFactor = 1.4;
+                                    bufferAvailable = 0.2 * currentBufferLevel;
+                                    break;
+                                case 8:
+                                    safeFactor = 1.5;
+                                    bufferAvailable = 0.3 * currentBufferLevel;
+                                    break;
+                                case 9:
+                                    safeFactor = 1.6;
+                                    bufferAvailable = 0.4 * currentBufferLevel;
+                                    break;
+                                case 10:
+                                    safeFactor = 1.7;
+                                    bufferAvailable = 0.6*currentBufferLevel;
+                                    break;
+                                default:
+                                    safeFactor = 1.1;
+                                    bufferAvailable = currentBufferLevel;
+                            }
+                        } else {
+                            switch (nextSegmentInfo.importance) {
+                                case 5:
+                                case 6:
+                                case 7:
+                                    safeFactor = 1.1;
+                                    bufferAvailable = 0.3 * currentBufferLevel;
+                                    break;
+                                case 8:
+                                    safeFactor = 1.2;
+                                    bufferAvailable = 0.5 * currentBufferLevel;
+                                    break;
+                                case 9:
+                                    safeFactor = 1.3;
+                                    bufferAvailable = 0.7 * currentBufferLevel;
+                                    break;
+                                case 10:
+                                    safeFactor = 1.4;
+                                    bufferAvailable = 0.9 * currentBufferLevel;
+                                    break;
+                                default:
+                                    safeFactor = 1.1;
+                                    bufferAvailable = currentBufferLevel;
+                            }
+                        }
+                        //choose the video quality
+                        switchRequest.value = getQualityForVideo(mediaInfo, estimatedBandwidth, safeFactor, bufferAvailable);
+                        switchRequest.reason = 'safeFactor:' + safeFactor + 'bufferAvailable:' + bufferAvailable;
+
+                        //Second, to see if need to keep quality to avoid the quality oscillation: consider the same scene case
+                        if(currentSegmentInfo.scene==nextSegmentInfo.scene) {
+
+                            if (needToKeepQuality(mediaInfo, switchRequest, currentBufferLevel, richBuffer, estimatedBandwidth,qualitySwitchHistory)) {
+                                switchRequest.value = -1;
+                                switchRequest.reason = 'Keep the same quality';
+                            }
+                        }
+
                     }
                 }else if(mediaType=='audio'){
                         //choose the audio quality
@@ -775,7 +434,8 @@ function PerceptualContentAwareRule(config) {
                 if (abrController.getAbandonmentStateFor(mediaType) !== AbrController.ABANDON_LOAD) {
                     if (bufferStateVO.state === BufferController.BUFFER_LOADED || isDynamic) {
                         streamProcessor.getScheduleController().setTimeToLoadDelay(0);
-                        log( 'type: ', mediaType,'PerceptualContentAwareRule requesting switch to index: ', switchRequest.value,"switch reason:", switchRequest.reason);
+                        log('PerceptualContentAwareRule requesting switch to index: ', switchRequest.value, 'type: ', mediaType, 'estimated bandwidth', Math.round(estimatedBandwidth), 'kbps', 'buffer', currentBufferLevel, 'switch reason', switchRequest.reason);
+
                     }
 
                 }
@@ -783,8 +443,6 @@ function PerceptualContentAwareRule(config) {
 
             return switchRequest;
         }
-
-
 
     function reset() {
         setup();

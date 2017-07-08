@@ -1316,6 +1316,13 @@ function MediaPlayer() {
     function enablePerceptualContentAwareThroughputABR(value) {
         mediaPlayerModel.setPerceptualContentAwareThroughputABR(value);
     }
+      /**
+       * to enable local perceptual content aware throughput ABR
+      * */
+      function enableLocalPerceptualContentAwareThroughputABR(value) {
+        mediaPlayerModel.setLocalPerceptualContentAwareThroughputABR(value);
+    }
+
     /**
      * Allows application to retrieve a manifest.  Manifest loading is asynchro
      * nous and
@@ -2143,7 +2150,8 @@ function MediaPlayer() {
         getImportanceInfoArray: getImportanceInfoArray,
         reset: reset,
     //    by huaying
-	    enablePerceptualContentAwareThroughputABR:enablePerceptualContentAwareThroughputABR
+	    enablePerceptualContentAwareThroughputABR:enablePerceptualContentAwareThroughputABR,
+	    enableLocalPerceptualContentAwareThroughputABR:enableLocalPerceptualContentAwareThroughputABR
     };
 
     setup();

@@ -61,14 +61,17 @@ function BufferLevelRule(config) {
             const videoBufferLevel = dashMetrics.getCurrentBufferLevel(metricsModel.getReadOnlyMetricsFor('video'));
             bufferTarget = Math.floor(Math.max(videoBufferLevel, representationInfo.fragmentDuration));
         } else {
-            const streamInfo = representationInfo.mediaInfo.streamInfo;
-            const abrController = streamProcessor.getABRController();
-            if (abrController.isPlayingAtTopQuality(streamInfo)) {
-                const isLongFormContent = streamInfo.manifestInfo.duration >= mediaPlayerModel.getLongFormContentDurationThreshold();
-                bufferTarget = isLongFormContent ? mediaPlayerModel.getBufferTimeAtTopQualityLongForm() : mediaPlayerModel.getBufferTimeAtTopQuality();
-            }else {
-                bufferTarget = mediaPlayerModel.getStableBufferTime();
-            }
+	        //by huaying
+	        bufferTarget = mediaPlayerModel.getStableBufferTime();
+            //
+            // const streamInfo = representationInfo.mediaInfo.streamInfo;
+            // const abrController = streamProcessor.getABRController();
+            // if (abrController.isPlayingAtTopQuality(streamInfo)) {
+            //     const isLongFormContent = streamInfo.manifestInfo.duration >= mediaPlayerModel.getLongFormContentDurationThreshold();
+            //     bufferTarget = isLongFormContent ? mediaPlayerModel.getBufferTimeAtTopQualityLongForm() : mediaPlayerModel.getBufferTimeAtTopQuality();
+            // }else {
+            //     bufferTarget = mediaPlayerModel.getStableBufferTime();
+            // }
         }
 
         return bufferTarget;

@@ -43,6 +43,7 @@ import SwitchRequest from '../SwitchRequest.js';
 
 //by huaying
 import PerceptualContentAwareRule from './PerceptualContentAwareRule.js';
+import LocalPerceptualContentAwareRule from './LocalPerceptualContentAwareRule.js';
 
 
 
@@ -76,7 +77,15 @@ function ABRRulesCollection() {
                         dashMetrics: dashMetrics
                 })
 			);
-		} else if (mediaPlayerModel.getBufferOccupancyABREnabled()) {
+		}else if(mediaPlayerModel.getLocalPerceptualContentAwareThroughputABR()){
+			qualitySwitchRules.push(
+				LocalPerceptualContentAwareRule(context).create({
+					metricsModel: metricsModel,
+					dashMetrics: dashMetrics
+				})
+			);
+		}
+		else if (mediaPlayerModel.getBufferOccupancyABREnabled()) {
 			qualitySwitchRules.push(
 				BolaRule(context).create({
 					metricsModel: metricsModel,

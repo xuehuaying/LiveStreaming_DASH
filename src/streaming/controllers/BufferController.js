@@ -41,10 +41,7 @@ import BoxParser from '../utils/BoxParser';
 import FactoryMaker from '../../core/FactoryMaker';
 import Debug from '../../core/Debug';
 import InitCache from '../utils/InitCache';
-//by huaying
-import NextFragmentRequestRule from '../rules/scheduling/NextFragmentRequestRule';
-import DashAdapter from '../../dash/DashAdapter';
-import TextSourceBuffer from '../TextSourceBuffer';
+
 
 
 
@@ -90,9 +87,7 @@ function BufferController(config) {
         abrController,
         scheduleController,
         mediaPlayerModel,
-        initCache,
-	    //by huaying
-	    nextFragmentRequestRule;
+        initCache;
 
 
     function setup() {
@@ -121,13 +116,6 @@ function BufferController(config) {
         initCache = InitCache(context).getInstance();
         scheduleController = streamProcessor.getScheduleController();
         requiredQuality = abrController.getQualityFor(type, streamProcessor.getStreamInfo());
-	    //by huaying
-	    nextFragmentRequestRule = NextFragmentRequestRule(context).create({
-		    adapter: DashAdapter(context).getInstance(),
-		    sourceBufferController: SourceBufferController(context).getInstance(),
-		    textSourceBuffer: TextSourceBuffer(context).getInstance()
-
-	    });
 
 
         eventBus.on(Events.DATA_UPDATE_COMPLETED, onDataUpdateCompleted, this);
@@ -180,13 +168,6 @@ function BufferController(config) {
         const chunk = initCache.extract(streamId, type, quality);
         if (chunk) {
             appendToBuffer(chunk);
-	        //by huaying
-	        const request = nextFragmentRequestRule.execute(streamProcessor);
-	        let fragmentController = streamProcessor.getFragmentController();
-	        let fragmentModel = fragmentController.getModel(type);
-	        if (request) {
-		        fragmentModel.executeRequest(request);
-	        }
         } else {
             eventBus.trigger(Events.INIT_REQUESTED, {sender: instance});
         }

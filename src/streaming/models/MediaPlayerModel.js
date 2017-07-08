@@ -90,7 +90,8 @@ function MediaPlayerModel() {
 		xhrWithCredentials,
 		fastSwitchEnabled,
 		//by huaying
-		perceptualContentAwareThroughputABREnabled;
+		perceptualContentAwareThroughputABREnabled,
+		localPerceptualContentAwareThroughputABREnabled;
 
 	function setup() {
 		UTCTimingSources = [];
@@ -100,6 +101,7 @@ function MediaPlayerModel() {
 		bufferOccupancyABREnabled = false;
 		//by huaying
 		perceptualContentAwareThroughputABREnabled = false;
+		localPerceptualContentAwareThroughputABREnabled=false;
 		fastSwitchEnabled = false;
 		lastBitrateCachingInfo = {enabled: true, ttl: DEFAULT_LOCAL_STORAGE_BITRATE_EXPIRATION};
 		lastMediaSettingsCachingInfo = {enabled: true, ttl: DEFAULT_LOCAL_STORAGE_MEDIA_SETTINGS_EXPIRATION};
@@ -156,6 +158,15 @@ function MediaPlayerModel() {
 	function getPerceptualContentAwareThroughputABR() {
 		return perceptualContentAwareThroughputABREnabled;
 	}
+
+	function setLocalPerceptualContentAwareThroughputABR(value) {
+		localPerceptualContentAwareThroughputABREnabled = value;
+	}
+
+	function getLocalPerceptualContentAwareThroughputABR() {
+		return localPerceptualContentAwareThroughputABREnabled;
+	}
+
 
 
 	function setBandwidthSafetyFactor(value) {
@@ -429,7 +440,9 @@ function MediaPlayerModel() {
 		reset: reset,
 		//    by huaying
 		setPerceptualContentAwareThroughputABR: setPerceptualContentAwareThroughputABR,
-		getPerceptualContentAwareThroughputABR: getPerceptualContentAwareThroughputABR
+		getPerceptualContentAwareThroughputABR: getPerceptualContentAwareThroughputABR,
+		setLocalPerceptualContentAwareThroughputABR: setLocalPerceptualContentAwareThroughputABR,
+		getLocalPerceptualContentAwareThroughputABR: getLocalPerceptualContentAwareThroughputABR
 	};
 
 	setup();
