@@ -1,7 +1,8 @@
 /**
  * Created by Aimmee Xue on 2017/7/4.
  */
-
+import EventBus from '../../../core/EventBus';
+import Events from '../../../core/events/Events';
 import FactoryMaker from '../../../core/FactoryMaker';
 import SwitchRequest from '../SwitchRequest.js';
 import {HTTPRequest} from '../../vo/metrics/HTTPRequest';
@@ -11,8 +12,6 @@ import Debug from '../../../core/Debug';
 import DashAdapter from '../../../dash/DashAdapter';
 import MediaPlayerModel from '../../models/MediaPlayerModel';
 import BitrateInfo from '../../vo/BitrateInfo';
-
-
 
 const MAX_MEASUREMENTS_TO_KEEP = 20;
 const CACHE_LOAD_THRESHOLD_VIDEO = 50;
@@ -32,7 +31,6 @@ const MIN_BUFFER=4;
 
 
 
-
 function PerceptualContentAwareRule(config) {
 
 	const context = this.context;
@@ -40,6 +38,7 @@ function PerceptualContentAwareRule(config) {
 	const metricsModel = config.metricsModel;
 	const log = Debug(context).getInstance().log;
 
+    const eventBus = EventBus(context).getInstance();
 
 	let throughputArray,
 		latencyArray,
@@ -49,6 +48,7 @@ function PerceptualContentAwareRule(config) {
 		fragmentDuration,
 		estimatedBandwidthArray,
 		//version:3
+        requestQualityHistory,
 		bufferAvailableArray;
 
 	function setup() {
@@ -58,9 +58,17 @@ function PerceptualContentAwareRule(config) {
 		//version:3
 		bufferAvailableArray=[];
 		bufferStateDict={};
+        requestQualityHistory=[];
 		mediaPlayerModel = MediaPlayerModel(context).getInstance();
 		adapter = DashAdapter(context).getInstance();
+        eventBus.on(Events.VIDEO_SEND_REQUEST, onVideoSendRequest, this);
 	}
+
+    function onVideoSendRequest(e) {
+        if (e.error) return;
+        log("add by menglan, index:" + e.index + " quality:" + e.quality);
+        requestQualityHistory.push(e.quality);
+    }
 
 	function isCachedResponse(latency, downloadTime, mediaType) {
 		let ret = false;
@@ -272,17 +280,9 @@ function PerceptualContentAwareRule(config) {
 	}
 
 	//version:3
-	function getInitialQualityForSailency(foreSaliency,backSaliency,value){
+	function getInitialQualityForSailency(foreSaliency,backSaliency,value,topQualityIndex){
 		let initialValue;
-		// let maxValue=0;
-		// const bitrateList=getBitrateList(mediaInfo);
-		//
-		// if(bitrateList && bitrateList.length>0)
-		// {
-		//    maxValue=bitrateList.length-1;
-		// }
-		// log("Test by huaying:" + "maxValue:" + maxValue);
-		if(backSaliency>=foreSaliency)initialValue=Math.min(value+backSaliency-foreSaliency,5);
+		if(backSaliency>=foreSaliency)initialValue=Math.min(value+backSaliency-foreSaliency,topQualityIndex);
 		else initialValue=Math.max(value-(foreSaliency-backSaliency),0);
 		return initialValue;
 
@@ -361,6 +361,7 @@ function PerceptualContentAwareRule(config) {
 
 
 		const mediaInfo = rulesContext.getMediaInfo();
+        const topQualityIndex=rulesContext.getTopQualityIndex();
 		const mediaType = mediaInfo.type;
 		const metrics = metricsModel.getReadOnlyMetricsFor(mediaType);
 		const streamProcessor = rulesContext.getStreamProcessor();
@@ -369,8 +370,6 @@ function PerceptualContentAwareRule(config) {
 		const isDynamic = streamProcessor.isDynamic();
 		const lastRequest = dashMetrics.getCurrentHttpRequest(metrics);
 		const bufferStateVO = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
-		const switchHistory = rulesContext.getSwitchHistory();
-		const qualitySwitchHistory=switchHistory.getQualitySwitchHistory();
 		const switchRequest = SwitchRequest(context).create();
 
 		if (!metrics || !lastRequest || lastRequest.type !== HTTPRequest.MEDIA_SEGMENT_TYPE || !bufferStateVO) {
@@ -395,24 +394,22 @@ function PerceptualContentAwareRule(config) {
 					//get the saliency level of the last segment, current segment and next segment
 					//get the switchRequestValue of the last segment
 					let lastSegmentIndex = streamProcessor.getIndexHandler().getCurrentIndex();
-					if(lastSegmentIndex==21){
-						log("Test by huaying:"+"third turning detected!");
-					}
 					let currentSegmentIndex = lastSegmentIndex+1;
 					let lastSegmentSaliency = adapter.getSaliencyClass()[lastSegmentIndex];
 					let currentSegmentSaliency = adapter.getSaliencyClass()[currentSegmentIndex];
 					let nextSegmentSaliency=adapter.getSaliencyClass()[currentSegmentIndex+1];
 					bufferAvailableArray[currentSegmentIndex]=1;
 					let len,lastValue;
-					if(qualitySwitchHistory){
-						len=qualitySwitchHistory.length;
-						lastValue=qualitySwitchHistory[len - 1].newValue;
-						if (lastValue == -1)lastValue = qualitySwitchHistory[len - 1].oldValue;
-					}
+
+                    if (requestQualityHistory){
+                        len = requestQualityHistory.length;
+                        lastValue = requestQualityHistory[len - 1];
+                        log("add by menglan: lastvalue: " + lastValue);
+                    }
 					if(currentSegmentSaliency) {
 						if (nextSegmentSaliency) {
 							//First,get the initial quality by last segment saliency
-							switchRequest.value = getInitialQualityForSailency(lastSegmentSaliency, currentSegmentSaliency, lastValue);
+							switchRequest.value = getInitialQualityForSailency(lastSegmentSaliency, currentSegmentSaliency, lastValue,topQualityIndex);
 							log("Test by huaying:" + "The quality class in roundA:" + switchRequest.value);
 							//Second,check if the initial assigned quality meets the current buffer,if not, adjust it
 							switchRequest.value = adjustQualityForCurrentBuffer(mediaInfo, switchRequest.value, estimatedBandwidth, currentBufferLevel, currentSegmentIndex);
@@ -454,7 +451,8 @@ function PerceptualContentAwareRule(config) {
 
 
 	function reset() {
-		setup();
+        eventBus.off(Events.VIDEO_SEND_REQUEST, onVideoSendRequest(), this);
+        setup();
 	}
 
 	var instance = {
