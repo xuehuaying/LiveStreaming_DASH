@@ -42,6 +42,8 @@ function RulesContext(config) {
     let droppedFramesHistory = config.droppedFramesHistory;
     let currentRequest = config.currentRequest;
     let richBuffer = config.hasRichBuffer;
+    //by huaying
+    let topQualityIndex=config.topQualityIndex;
 
     function getStreamInfo() {
         return representationInfo.mediaInfo.streamInfo;
@@ -86,6 +88,11 @@ function RulesContext(config) {
     function hasRichBuffer() {
         return richBuffer;
     }
+    //by huaying
+    function getTopQualityIndex() {
+        return topQualityIndex;
+        
+    }
 
     instance = {
         getCurrentValue: getCurrentValue,
@@ -98,7 +105,9 @@ function RulesContext(config) {
         getStreamInfo: getStreamInfo,
         getStreamProcessor: getStreamProcessor,
         getTrackInfo: getTrackInfo,
-        hasRichBuffer: hasRichBuffer
+        hasRichBuffer: hasRichBuffer,
+    //    by huaying
+        getTopQualityIndex:getTopQualityIndex
     };
 
     return instance;

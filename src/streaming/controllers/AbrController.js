@@ -279,13 +279,18 @@ function AbrController() {
         const streamInfo = streamProcessor.getStreamInfo();
         const streamId = streamInfo.id;
         const oldQuality = getQualityFor(type, streamInfo);
+        //by huaying
+        const topQualityIdx = getTopQualityIndexFor(type, streamId);
         const rulesContext = RulesContext(context).create({
             streamProcessor: streamProcessor,
             currentValue: oldQuality,
             playbackIndex: playbackIndex,
+            //by huaying
+            topQualityIndex:topQualityIdx,
             switchHistory: switchHistoryDict[type],
             droppedFramesHistory: droppedFramesHistory,
-            hasRichBuffer: hasRichBuffer(type)
+            hasRichBuffer: hasRichBuffer(type),
+            
         });
 
         if (droppedFramesHistory) {
@@ -294,7 +299,6 @@ function AbrController() {
 
         //log("ABR enabled? (" + autoSwitchBitrate + ")");
         if (getAutoSwitchBitrateFor(type)) {
-            const topQualityIdx = getTopQualityIndexFor(type, streamId);
             const switchRequest = abrRulesCollection.getMaxQuality(rulesContext);
             let newQuality = switchRequest.value;
             if (newQuality > topQualityIdx) {

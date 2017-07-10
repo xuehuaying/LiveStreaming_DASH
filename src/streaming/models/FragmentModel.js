@@ -145,6 +145,10 @@ function FragmentModel(config) {
                 eventBus.trigger(Events.STREAM_COMPLETED, {request: request, fragmentModel: this});
                 break;
             case FragmentRequest.ACTION_DOWNLOAD:
+                if (request.mediaType == 'video')
+                {
+                    eventBus.trigger(Events.VIDEO_SEND_REQUEST, {index: request.index, quality: request.quality});
+                }
                 addSchedulingInfoMetrics(request, FRAGMENT_MODEL_LOADING);
                 loadingRequests.push(request);
                 loadCurrentFragment(request);
