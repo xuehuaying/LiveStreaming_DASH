@@ -359,19 +359,28 @@ function DashAdapter() {
             //extract segment information(scene and importance) of the period
             var availableRepresentations = representationController.updateRepresentations(adaptation);
             var representation = availableRepresentations[0];
-            var segmentList = representation.adaptation.period.mpd.manifest.Period_asArray[representation.adaptation.period.index].AdaptationSet_asArray[representation.adaptation.index].Representation_asArray[representation.index].SegmentList;
-            var len = segmentList.SegmentURL_asArray.length;
-            for (periodSegIdx = 0; periodSegIdx < len; periodSegIdx++) {
-                s = segmentList.SegmentURL_asArray[periodSegIdx];
-                if (!segmentImportance[periodSegIdx]) {
-                    segmentImportance.push({
-                        scene: s.scene,
-                        importance: s.importance
-                    });
+            if(representation.segmentInfoType=="SegmentList"){
+	            var segmentList = representation.adaptation.period.mpd.manifest.Period_asArray[representation.adaptation.period.index].AdaptationSet_asArray[representation.adaptation.index].Representation_asArray[representation.index].SegmentList;
+	            var s0=segmentList.SegmentURL_asArray[0];
+	            if(s0.hasOwnProperty('scene') && s0.hasOwnProperty('importance')){
+		            var len = segmentList.SegmentURL_asArray.length;
+		            for (periodSegIdx = 0; periodSegIdx < len; periodSegIdx++) {
+			            s = segmentList.SegmentURL_asArray[periodSegIdx];
+			            if (!segmentImportance[periodSegIdx]) {
+				            segmentImportance.push({
+					            scene: s.scene,
+					            importance: s.importance
+				            });
+			            }
+		            }
                 }
+
             }
+
+
         //    classify the segmentImportance
-            classifySegmentImportance(segmentImportance);
+            if(segmentImportance.length)
+                classifySegmentImportance(segmentImportance);
 
         }
         
