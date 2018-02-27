@@ -81,7 +81,8 @@ function ABRRulesCollection() {
 			qualitySwitchRules.push(
 				LocalPerceptualContentAwareRule(context).create({
 					metricsModel: metricsModel,
-					dashMetrics: dashMetrics
+					dashMetrics: dashMetrics,
+					version:mediaPlayerModel.getLocalPerceptualRuleVersion()
 				})
 			);
 		}

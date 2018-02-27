@@ -1319,8 +1319,9 @@ function MediaPlayer() {
       /**
        * to enable local perceptual content aware throughput ABR
       * */
-      function enableLocalPerceptualContentAwareThroughputABR(value) {
+      function enableLocalPerceptualContentAwareThroughputABR(value,version=1) {
         mediaPlayerModel.setLocalPerceptualContentAwareThroughputABR(value);
+        mediaPlayerModel.setLocalPerceptualRuleVersion(version);
     }
 
     /**

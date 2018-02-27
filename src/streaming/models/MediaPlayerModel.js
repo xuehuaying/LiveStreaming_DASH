@@ -91,7 +91,8 @@ function MediaPlayerModel() {
 		fastSwitchEnabled,
 		//by huaying
 		perceptualContentAwareThroughputABREnabled,
-		localPerceptualContentAwareThroughputABREnabled;
+		localPerceptualContentAwareThroughputABREnabled,
+		localPerceptualRuleVersion;
 
 	function setup() {
 		UTCTimingSources = [];
@@ -167,7 +168,13 @@ function MediaPlayerModel() {
 		return localPerceptualContentAwareThroughputABREnabled;
 	}
 
+	function setLocalPerceptualRuleVersion(version) {
+		localPerceptualRuleVersion=version;
+	}
 
+	function getLocalPerceptualRuleVersion() {
+		return localPerceptualRuleVersion;
+	}
 
 	function setBandwidthSafetyFactor(value) {
 		bandwidthSafetyFactor = value;
@@ -442,7 +449,9 @@ function MediaPlayerModel() {
 		setPerceptualContentAwareThroughputABR: setPerceptualContentAwareThroughputABR,
 		getPerceptualContentAwareThroughputABR: getPerceptualContentAwareThroughputABR,
 		setLocalPerceptualContentAwareThroughputABR: setLocalPerceptualContentAwareThroughputABR,
-		getLocalPerceptualContentAwareThroughputABR: getLocalPerceptualContentAwareThroughputABR
+		getLocalPerceptualContentAwareThroughputABR: getLocalPerceptualContentAwareThroughputABR,
+		setLocalPerceptualRuleVersion:setLocalPerceptualRuleVersion,
+		getLocalPerceptualRuleVersion:getLocalPerceptualRuleVersion
 	};
 
 	setup();

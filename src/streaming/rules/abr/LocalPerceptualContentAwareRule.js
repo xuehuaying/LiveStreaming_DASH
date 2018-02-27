@@ -26,16 +26,17 @@ const THROUGHPUT_INCREASE_SCALE = 1.3;
 const QUALITY_DEFAULT=0;
 const INSUFFICIENT_BUFFER=2;
 const MIN_BUFFER=4;
-const QUALITY_UP=0.001;
 
 
 
 
-function PerceptualContentAwareRule(config) {
+
+function LocalPerceptualContentAwareRule(config) {
 
 	const context = this.context;
 	const dashMetrics = config.dashMetrics;
 	const metricsModel = config.metricsModel;
+	const version=config.version;
 	const log = Debug(context).getInstance().log;
 
     const eventBus = EventBus(context).getInstance();
@@ -305,7 +306,7 @@ function PerceptualContentAwareRule(config) {
 			if (estimatedBandwidth && currentBufferLevel) {
 				bufferAvailable = initialQuality * fragmentDuration / (estimatedBandwidth * 1000 * currentBufferLevel);
 				log("Test by huaying:" + "bufferAvailable factor in roundB:" + bufferAvailable);
-				if (bufferAvailable > 1||bufferAvailable<QUALITY_UP) {
+				if (bufferAvailable > 1) {
 					if (currentValue) {
 						bufferAvailable = 1;
 						currentValue = getQualityForVideo(mediaInfo, estimatedBandwidth, bufferAvailable * currentBufferLevel);
@@ -433,8 +434,7 @@ function PerceptualContentAwareRule(config) {
 					let currentSegmentIndex = lastSegmentIndex+1;
 					let lastSegmentSaliency = adapter.getSaliencyClass()[lastSegmentIndex];
 					let currentSegmentSaliency = adapter.getSaliencyClass()[currentSegmentIndex];
-					let nextSegmentSaliency=adapter.getSaliencyClass()[currentSegmentIndex+1];
-					let len,lastValue,initialValue,testValue,adjustedValue;
+					let len,lastValue,initialValue,adjustedValue;
 					let nextSaliency=getNextSaliency(1);
 					if(currentSegmentIndex && currentSegmentSaliency!=lastSegmentSaliency){
 						nextSaliency=getNextSaliency(currentSegmentIndex);
@@ -447,19 +447,21 @@ function PerceptualContentAwareRule(config) {
                         log("add by menglan: lastvalue: " + lastValue);
                     }
 					if(currentSegmentSaliency) {
-						if (nextSegmentSaliency) {
-							//First,get the initial quality by last segment saliency
+						if (nextSaliency) {
+							//get the initial quality by last segment saliency and adjust it
 							initialValue = getInitialQualityForSailency(lastSegmentSaliency, currentSegmentSaliency, lastValue, topQualityIndex);
 							log("Test by huaying:" + "initial quality:" + initialValue);
 							adjustedValue = adjustInitialQuality(mediaInfo, initialValue, estimatedBandwidth, currentBufferLevel, lastSegmentSaliency, currentSegmentSaliency, nextSaliency, lastValue, topQualityIndex);
-							testValue = initialValue;
-							//Second,adjust the initial quality
-							if (lastSegmentSaliency&&currentSegmentSaliency != lastSegmentSaliency) {
-								while (testValue == adjustedValue && testValue<topQualityIndex) {
-									testValue++;
-									log("Test by huaying:test quality:"+testValue);
-									if(getQualityFromIndex(mediaInfo,testValue)<estimatedBandwidth*1000){
-										adjustedValue = adjustInitialQuality(mediaInfo, testValue, estimatedBandwidth, currentBufferLevel, lastSegmentSaliency, currentSegmentSaliency, nextSaliency, lastValue, topQualityIndex);
+							if(version == 2){
+								let testValue = initialValue;
+								//try to raise the quality
+								if (lastSegmentSaliency&&currentSegmentSaliency != lastSegmentSaliency) {
+									while (testValue == adjustedValue && testValue<topQualityIndex) {
+										testValue++;
+										log("Test by huaying:test quality:"+testValue);
+										if(getQualityFromIndex(mediaInfo,testValue)<estimatedBandwidth*1000){
+											adjustedValue = adjustInitialQuality(mediaInfo, testValue, estimatedBandwidth, currentBufferLevel, lastSegmentSaliency, currentSegmentSaliency, nextSaliency, lastValue, topQualityIndex);
+										}
 									}
 								}
 							}
@@ -468,7 +470,7 @@ function PerceptualContentAwareRule(config) {
 							switchRequest.reason = "SaliencyRule:" + "estimated bandwidth" + Math.round(estimatedBandwidth) + "kbps" + "buffer:" + currentBufferLevel;
 						} else {
 							switchRequest.value = getQualityForVideo(mediaInfo, estimatedBandwidth, currentBufferLevel);
-							switchRequest.reason = "LastSegmentRule";
+							switchRequest.reason = "LastSceneRule";
 						}
 					}
 				}else if(mediaType=='audio'){
@@ -508,5 +510,5 @@ function PerceptualContentAwareRule(config) {
 }
 
 
-PerceptualContentAwareRule.__dashjs_factory_name = 'PerceptualContentAwareRule';
-export default FactoryMaker.getClassFactory(PerceptualContentAwareRule);
+LocalPerceptualContentAwareRule.__dashjs_factory_name = 'LocalPerceptualContentAwareRule';
+export default FactoryMaker.getClassFactory(LocalPerceptualContentAwareRule);
