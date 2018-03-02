@@ -483,6 +483,31 @@ function DashManifestModel() {
         return representations;
     }
 
+    //by huaying
+    function getSegmentCountForAdaptation(manifest, adaptation) {
+        var a = manifest.Period_asArray[adaptation.period.index].AdaptationSet_asArray[adaptation.index];
+        var r = a.Representation_asArray[0];
+        var segmentInfo;
+
+	    if (r.hasOwnProperty('SegmentBase')) {
+		    segmentInfo = r.SegmentBase;
+		 //   TODO:how to get the segment count with the SegmentBase case
+	    }
+	    else if (r.hasOwnProperty('SegmentList')) {
+		    segmentInfo = r.SegmentList;
+		    return segmentInfo.SegmentURL_asArray.length;
+
+        }
+	    else if (r.hasOwnProperty('SegmentTemplate')) {
+		    segmentInfo = r.SegmentTemplate;
+		    //   TODO:how to get the segment count with the SegmentTemplate case
+        }
+    }
+
+    function getSegmentDuration(){
+
+    }
+
     function getAdaptationsForPeriod(manifest, period) {
         var p = manifest.Period_asArray[period.index];
         var adaptations = [];
@@ -922,7 +947,9 @@ function DashManifestModel() {
         getUTCTimingSources: getUTCTimingSources,
         getBaseURLsFromElement: getBaseURLsFromElement,
         getRepresentationSortFunction: getRepresentationSortFunction,
-        getLocation: getLocation
+        getLocation: getLocation,
+        getSegmentCountForAdaptation:getSegmentCountForAdaptation,
+        getSegmentDuration:getSegmentDuration
     };
 
     return instance;

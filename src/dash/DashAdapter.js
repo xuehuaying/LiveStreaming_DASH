@@ -48,7 +48,9 @@ function DashAdapter() {
         adaptations,
         //by huaying
         segmentImportance,
-        saliencyClass;
+        saliencyClass,
+        shotsList,
+        saliencyList;
 
     function setConfig(config) {
         if (!config) return;
@@ -63,7 +65,9 @@ function DashAdapter() {
         adaptations = {};
         //by huaying
         segmentImportance= [];
-        saliencyClass=[];
+        saliencyClass= [];
+        shotsList = [];
+        saliencyList = [];
     }
 
 
@@ -366,6 +370,8 @@ function DashAdapter() {
 		            var len = segmentList.SegmentURL_asArray.length;
 		            for (periodSegIdx = 0; periodSegIdx < len; periodSegIdx++) {
 			            s = segmentList.SegmentURL_asArray[periodSegIdx];
+			            shotsList.push(s.scene);
+			            saliencyList.push(s.importance);
 			            if (!segmentImportance[periodSegIdx]) {
 				            segmentImportance.push({
 					            scene: s.scene,
@@ -387,6 +393,14 @@ function DashAdapter() {
         id = mediaInfo.id;
         data = id ? dashManifestModel.getAdaptationForId(id, manifest, periodInfo.index) : dashManifestModel.getAdaptationForIndex(mediaInfo.index, manifest, periodInfo.index);
         streamProcessor.getRepresentationController().updateData(data, adaptation, type);
+    }
+
+    function getShotsList(){
+		return shotsList;
+    }
+
+    function getSaliencyList() {
+    	return saliencyList;
     }
 
     function getRepresentationInfoForQuality(manifest, representationController, quality) {
@@ -480,7 +494,9 @@ function DashAdapter() {
         metricsList: METRIC_LIST,
     //    by huaying
         getSegmentImportance:getSegmentImportance,
-        getSaliencyClass:getSaliencyClass
+        getSaliencyClass:getSaliencyClass,
+	    getShotsList:getShotsList,
+	    getSaliencyList:getSaliencyList
     };
 
     return instance;

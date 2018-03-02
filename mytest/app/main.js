@@ -11,7 +11,7 @@ app.controller('DashController', function($scope, FileSaver, Blob) {
     $scope.player = dashjs.MediaPlayer().create();
     //by huaying
     //  $scope.player.enablePerceptualContentAwareThroughputABR(true);
-     $scope.player.enableLocalPerceptualContentAwareThroughputABR(true);
+     $scope.player.enableLocalPerceptualContentAwareThroughputABR(true,2);
 					//$scope.player.enableBufferOccupancyABR(true);
 
     $scope.player.initialize($scope.video, $scope.url, true);
