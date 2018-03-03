@@ -64,9 +64,8 @@ function DashEnvModel() {
 		saliencyList = DashAdapter.getSaliencyList();
 		changeToShotInfo(shotsList);
 		changeToSaliencyInfo(saliencyList);
-		//TODO:get segmentDuration
-		segmentDuration = dashManifestModel.getSegmentDuration();
 
+		segmentDuration = manifest.maxSegmentDuration;
 	}
 
 	function getNumStates(){
@@ -274,6 +273,13 @@ function DashEnvModel() {
 	}
 
 	function changeToSaliencyInfo(saliencyList){
+        var delta = 0;
+        var length = saliencyList.length;
+        saliencyInfo[0] = delta;
+        for(var i = 1; i < length; i++){
+            delta = saliencyList[i] - saliencyList[i - 1];
+            saliencyInfo.push(delta);
+        }
 
 	}
 

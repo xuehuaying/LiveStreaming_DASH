@@ -504,10 +504,6 @@ function DashManifestModel() {
         }
     }
 
-    function getSegmentDuration(){
-
-    }
-
     function getAdaptationsForPeriod(manifest, period) {
         var p = manifest.Period_asArray[period.index];
         var adaptations = [];
@@ -948,8 +944,7 @@ function DashManifestModel() {
         getBaseURLsFromElement: getBaseURLsFromElement,
         getRepresentationSortFunction: getRepresentationSortFunction,
         getLocation: getLocation,
-        getSegmentCountForAdaptation:getSegmentCountForAdaptation,
-        getSegmentDuration:getSegmentDuration
+        getSegmentCountForAdaptation:getSegmentCountForAdaptation
     };
 
     return instance;
