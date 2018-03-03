@@ -105,6 +105,12 @@ function FragmentController(/*config*/) {
 
         const chunk = createDataChunk(bytes, request, streamInfo.id);
         eventBus.trigger(isInit ? Events.INIT_FRAGMENT_LOADED : Events.MEDIA_FRAGMENT_LOADED, {chunk: chunk, fragmentModel: e.sender});
+
+        // if it is the fourth video segment, train mdp model
+        if (request.mediaType == "video" && request.index == 4)
+        {
+            eventBus.trigger(Events.MDP_TRAIN, {fragmentModel: e.sender});
+        }
     }
 
     instance = {

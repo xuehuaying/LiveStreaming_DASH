@@ -39,6 +39,7 @@ function ManifestUpdater() {
     const context = this.context;
     const log = Debug(context).getInstance().log;
     const eventBus = EventBus(context).getInstance();
+    var mpdCounter = 0;
 
     let instance,
         refreshDelay,
@@ -132,6 +133,13 @@ function ManifestUpdater() {
 
         eventBus.trigger(Events.MANIFEST_UPDATED, {manifest: manifest});
         log('Manifest has been refreshed at ' + date + '[' + date.getTime() / 1000 + '] ');
+
+        // trigger mdp train if it is not the first MPD update
+        if(mpdCounter > 0)
+        {
+            eventBus.trigger(Events.MDP_TRAIN, {manifest: manifest});
+        }
+        mpdCounter++;
 
         if (!isPaused) {
             startManifestRefreshTimer();
