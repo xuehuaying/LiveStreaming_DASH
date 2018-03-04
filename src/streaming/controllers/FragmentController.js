@@ -109,7 +109,7 @@ function FragmentController(/*config*/) {
         // if it is the fourth video segment, train mdp model
         if (request.mediaType == "video" && request.index == 4)
         {
-            eventBus.trigger(Events.MDP_TRAIN, {fragmentModel: e.sender});
+            eventBus.trigger(Events.MDP_TRAIN, {mpdIndex: 0});
         }
     }
 

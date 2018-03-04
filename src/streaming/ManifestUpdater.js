@@ -137,7 +137,7 @@ function ManifestUpdater() {
         // trigger mdp train if it is not the first MPD update
         if(mpdCounter > 0)
         {
-            eventBus.trigger(Events.MDP_TRAIN, {manifest: manifest});
+            eventBus.trigger(Events.MDP_TRAIN, {mpdIndex: mpdCounter});
         }
         mpdCounter++;
 
