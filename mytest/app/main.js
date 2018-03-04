@@ -5,13 +5,13 @@ var app = angular.module('DashPlayer', ['ngFileSaver']);
 app.controller('DashController', function($scope, FileSaver, Blob) {
 
     // $scope.url = "http://192.168.0.175/dashcontent/testvideo_24_modified.mpd";
-    $scope.url = "http://222.31.64.59/testvideo2/testvideo_24_modified.mpd";
-    //$scope.url = "http://192.168.0.175/VODs/big_buck_bunny_128k_a_dash.mpd";
+    //$scope.url = "http://222.31.64.59/testvideo2/testvideo_24_modified.mpd";
+    $scope.url = "http://192.168.0.104/VODs/big_buck_bunny_128k_a_dash.mpd";
     $scope.video = document.querySelector("#videoPlayer");
     $scope.player = dashjs.MediaPlayer().create();
     //by huaying
     //  $scope.player.enablePerceptualContentAwareThroughputABR(true);
-     $scope.player.enableLocalPerceptualContentAwareThroughputABR(true,2);
+     $scope.player.enableLocalPerceptualContentAwareThroughputABR(true,1);
 					//$scope.player.enableBufferOccupancyABR(true);
 
     $scope.player.initialize($scope.video, $scope.url, true);

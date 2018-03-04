@@ -13,7 +13,6 @@ import DashAdapter from '../DashAdapter';
 import DashManifestModel from 'DashManifestModel';
 import MdpState from '../vo/MdpState';
 
-const BANDWIDTH_SMOOTH_LEVEL = 4;
 const LAMDA = 1.5;
 const E = 1.5;
 const SLEEP_INTERVAL = 500;
@@ -56,7 +55,7 @@ function DashEnvModel() {
 		R_STABLE = config.R_STABLE;
 
 		q = mediaInfo.representationCount;
-		m = dashManifestModel.getSegmentCountForAdaptation(manifest,adaptation)-BANDWIDTH_SMOOTH_LEVEL + 1;
+		m = dashManifestModel.getSegmentCountForAdaptation(manifest,adaptation);
 		representations = dashManifestModel.getRepresentationsForAdaptation(manifest,adaptation);
 		for(var i = 0;i < representations.length;i++)
 			qualityDict.push(representations[i].bandwidth);
@@ -170,7 +169,7 @@ function DashEnvModel() {
 	function constructStates(initialBandwidth, initialBuffer){
 		var statesNum = getNumStates();
 		var states = [];
-		var startSegment = BANDWIDTH_SMOOTH_LEVEL - 1;
+		var startSegment = 0;
 
 		var state_0 = new MdpState();
 		state_0.buffer = initialBuffer;
