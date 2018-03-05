@@ -64,7 +64,7 @@ function DashEnvModel() {
 		changeToShotInfo(shotsList);
 		changeToSaliencyInfo(saliencyList);
 
-		segmentDuration = manifest.maxSegmentDuration;
+		segmentDuration = streamProcessor.getCurrentRepresentationInfo().fragmentDuration;
 	}
 
 	function getNumStates(){

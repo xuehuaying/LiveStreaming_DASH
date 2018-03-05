@@ -359,6 +359,7 @@ function LocalPerceptualContentAwareRule(config) {
 				bufferReserve = nextQuality * fragmentDuration / (estimatedBandwidth * 1000);
 				log("Test by huaying:" + "count:" + count + "quality value:"+value+"bufferLeft in roundD:" + bufferLeft + "bufferReserve in" +
 					" roundD:" + bufferReserve + "currentValue:" + i + "nextValue:" + k);
+				// if (bufferLeft >= bufferReserve && nextQuality<estimatedBandwidth*1000)return i;
 				if (bufferLeft >= bufferReserve)return i;
 			}
 		}

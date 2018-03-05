@@ -49,7 +49,8 @@ function ManifestUpdater() {
         manifestLoader,
         manifestModel,
         dashManifestModel,
-        mediaPlayerModel;
+        mediaPlayerModel,
+        manifest;
 
     function setConfig(config) {
         if (!config) return;
@@ -153,6 +154,7 @@ function ManifestUpdater() {
 
     function onManifestLoaded(e) {
         if (!e.error) {
+            manifest = e.manifest;
             update(e.manifest);
         }
     }
@@ -172,12 +174,16 @@ function ManifestUpdater() {
         isUpdating = false;
     }
 
+    function getManifest(){
+        return manifest;
+    }
     instance = {
         initialize: initialize,
         setManifest: setManifest,
         getManifestLoader: getManifestLoader,
         refreshManifest: refreshManifest,
         setConfig: setConfig,
+        getManifest: getManifest,
         reset: reset
     };
 
