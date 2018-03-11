@@ -59,8 +59,8 @@ function DashEnvModel() {
 		representations = dashManifestModel.getRepresentationsForAdaptation(manifest,adaptation);
 		for(var i = 0;i < representations.length;i++)
 			qualityDict.push(representations[i].bandwidth);
-		shotsList = DashAdapter.getShotsList();
-		saliencyList = DashAdapter.getSaliencyList();
+		shotsList = adaptor.getShotsList();
+		saliencyList = adaptor.getSaliencyList();
 		changeToShotInfo(shotsList);
 		changeToSaliencyInfo(saliencyList);
 

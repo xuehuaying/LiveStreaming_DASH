@@ -1325,6 +1325,13 @@ function MediaPlayer() {
     }
 
     /**
+     * to enable mdp perceptual content aware rule
+     * */
+    function enableMdpPerceptualContentAwareRule(value) {
+        mediaPlayerModel.setMdpPerceptualContentAwareRule(value);
+    }
+
+    /**
      * Allows application to retrieve a manifest.  Manifest loading is asynchro
      * nous and
      * requires the app-provided callback function
@@ -2152,7 +2159,8 @@ function MediaPlayer() {
         reset: reset,
     //    by huaying
 	    enablePerceptualContentAwareThroughputABR:enablePerceptualContentAwareThroughputABR,
-	    enableLocalPerceptualContentAwareThroughputABR:enableLocalPerceptualContentAwareThroughputABR
+	    enableLocalPerceptualContentAwareThroughputABR:enableLocalPerceptualContentAwareThroughputABR,
+        enableMdpPerceptualContentAwareRule:enableMdpPerceptualContentAwareRule
     };
 
     setup();

@@ -44,12 +44,7 @@ import SwitchRequest from '../SwitchRequest.js';
 //by huaying
 import PerceptualContentAwareRule from './PerceptualContentAwareRule.js';
 import LocalPerceptualContentAwareRule from './LocalPerceptualContentAwareRule.js';
-
-
-
-
-
-
+import MdpPerceptualContentAwareRule from './MdpPerceptualContentAwareRule.js';
 
 const QUALITY_SWITCH_RULES = 'qualitySwitchRules';
 const ABANDON_FRAGMENT_RULES = 'abandonFragmentRules';
@@ -77,16 +72,23 @@ function ABRRulesCollection() {
                         dashMetrics: dashMetrics
                 })
 			);
-		}else if(mediaPlayerModel.getLocalPerceptualContentAwareThroughputABR()){
-			qualitySwitchRules.push(
-				LocalPerceptualContentAwareRule(context).create({
-					metricsModel: metricsModel,
-					dashMetrics: dashMetrics,
-					version:mediaPlayerModel.getLocalPerceptualRuleVersion()
-				})
-			);
-		}
-		else if (mediaPlayerModel.getBufferOccupancyABREnabled()) {
+		}else if(mediaPlayerModel.getLocalPerceptualContentAwareThroughputABR()) {
+            qualitySwitchRules.push(
+                LocalPerceptualContentAwareRule(context).create({
+                    metricsModel: metricsModel,
+                    dashMetrics: dashMetrics,
+                    version: mediaPlayerModel.getLocalPerceptualRuleVersion()
+                })
+            );
+        }else if(mediaPlayerModel.getMdpPerceptualContentAwareRule){
+            qualitySwitchRules.push(
+                MdpPerceptualContentAwareRule(context).create({
+                    metricsModel: metricsModel,
+                    dashMetrics: dashMetrics
+                    // todo: add streamprocessor
+                })
+            );
+        }else if (mediaPlayerModel.getBufferOccupancyABREnabled()) {
 			qualitySwitchRules.push(
 				BolaRule(context).create({
 					metricsModel: metricsModel,

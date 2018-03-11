@@ -19,7 +19,6 @@ import {HTTPRequest} from '../../vo/metrics/HTTPRequest';
 import AbrController from '../../controllers/AbrController';
 import BufferController from '../../controllers/BufferController';
 import Debug from '../../../core/Debug';
-import DashAdapter from '../../../dash/DashAdapter';
 import MediaPlayerModel from '../../models/MediaPlayerModel';
 import BitrateInfo from '../../vo/BitrateInfo';
 
@@ -35,7 +34,6 @@ const AVERAGE_LATENCY_SAMPLES = AVERAGE_THROUGHPUT_SAMPLE_AMOUNT_VOD;
 const THROUGHPUT_DECREASE_SCALE = 1.3;
 const THROUGHPUT_INCREASE_SCALE = 1.3;
 const QUALITY_DEFAULT=0;
-const INSUFFICIENT_BUFFER=2;
 const MIN_BUFFER=4;
 
 const MAX_ROUND = 1000;
@@ -70,11 +68,7 @@ function MdpPerceptualContentAwareRule(config) {
         R_TARGET,
         requestQualityHistory,
         lastIndex,
-        metrics;
-
-    let
-        bufferStateDict,
-        adapter,
+        metrics,
         fragmentDuration;
 
     function setup() {
@@ -82,6 +76,7 @@ function MdpPerceptualContentAwareRule(config) {
         throughputArray = [];
         latencyArray = [];
         estimatedBandwidthArray=[];
+        requestQualityHistory=[];
         lastIndex = 0;
         dashEnvModel = DashEnvModel(context).getInstance();
         mediaPlayerModel = MediaPlayerModel(context).getInstance();
@@ -93,22 +88,9 @@ function MdpPerceptualContentAwareRule(config) {
         metrics = metricsModel.getReadOnlyMetricsFor('video');
         const bufferState = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
         R_TARGET = bufferState.target;
-
-
-
+        
         eventBus.on(Events.VIDEO_SEND_REQUEST, onVideoSendRequest, this);
         eventBus.on(Events.MDP_TRAIN, onMdpTrain, this);
-
-
-
-
-
-        //version:3;
-        bufferStateDict={};
-        requestQualityHistory=[];
-
-        adapter = DashAdapter(context).getInstance();
-
     }
 
 
@@ -241,7 +223,7 @@ function MdpPerceptualContentAwareRule(config) {
 
         }else if(mediaType=='audio'){
             //choose the audio quality
-            switchRequest.value = getQualityForAudio(mediaInfo, estimatedBandwidth);
+            switchRequest.value = getQualityForAudio(mediaInfo, estimatedBandwidthArray[estimatedBandwidthArray.length-1]);
             switchRequest.reason = 'Only throughput rule for audio'+'estimatedBandwidth:'+estimatedBandwidth;
         }
 
@@ -274,10 +256,6 @@ function MdpPerceptualContentAwareRule(config) {
             MSE = MSE / length;
         }
         return MSE;
-    }
-
-    function getStateIndex() {
-
     }
 
     function isCachedResponse(latency, downloadTime, mediaType) {
@@ -362,27 +340,7 @@ function MdpPerceptualContentAwareRule(config) {
         return (Math.pow(qualityNum,segmentIndex)-1)/(qualityNum-1);
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    function setBufferInfo(type, state) {
-        bufferStateDict[type] = bufferStateDict[type] || {};
-        bufferStateDict[type].state = state;
-        if (state === BufferController.BUFFER_LOADED && !bufferStateDict[type].firstBufferLoadedEvent) {
-            bufferStateDict[type].firstBufferLoadedEvent = true;
-        }
-    }
+    
 
     function getBitrateList(mediaInfo) {
         if (!mediaInfo || !mediaInfo.bitrateList) return null;
@@ -405,42 +363,7 @@ function MdpPerceptualContentAwareRule(config) {
 
         return infoList;
     }
-
-    function getQualityFromIndex(mediaInfo,index){
-        const bitrateList=getBitrateList(mediaInfo);
-        if(!bitrateList||bitrateList.length===0)
-            return 1000000;
-        return bitrateList[index].bitrate;
-    }
-
-    function getEstimatedBufferLevel(buffer,quality,estimatedBandwidth){
-        return buffer - (quality* fragmentDuration / (estimatedBandwidth*1000)) + fragmentDuration;
-    }
-
-    function getQualityForVideo(mediaInfo,estimatedBandwidth,buffer){
-        var bitrate=estimatedBandwidth*buffer/fragmentDuration;
-        const bitrateList = getBitrateList(mediaInfo);
-        if (!bitrateList || bitrateList.length === 0) return QUALITY_DEFAULT;
-        for(let i=bitrateList.length-1;i>=0;i--){
-            const bitrateInfo=bitrateList[i];
-            if(bitrate*1000>=bitrateInfo.bitrate)return i;
-        }
-        return 0;
-    }
-
-    //search for a quality to meet with the minimum buffer requirement
-    function getQualityForMinimumBuffer(mediaInfo,value,estimatedBandwidth,currentBufferLevel){
-        let quality,estimatedBufferLevel;
-        for(let i=value;i>=0;i--){
-            quality=getQualityFromIndex(mediaInfo,i);
-            estimatedBufferLevel=getEstimatedBufferLevel(currentBufferLevel,quality,estimatedBandwidth);
-            if(estimatedBufferLevel>=MIN_BUFFER)return i;
-        }
-        return 0;
-    }
-
-
-
+    
     function getQualityForAudio(mediaInfo,estimatedBandwidth){
         var bitrate=estimatedBandwidth;
         const bitrateList = getBitrateList(mediaInfo);
@@ -456,123 +379,11 @@ function MdpPerceptualContentAwareRule(config) {
         }
         return 0;
     }
-    //to get the next saliency which is different from the current saliency
-    function getNextSaliency(currentSegmentIndex) {
-        let saliencyClass=adapter.getSaliencyClass();
-        if(saliencyClass && saliencyClass.length>0){
-            for(let i=currentSegmentIndex;i<saliencyClass.length;i++){
-                if (saliencyClass[i]!=saliencyClass[currentSegmentIndex]){
-                    return saliencyClass[i];
-                }
-            }
-        }
-    }
 
 
-    function getInitialQualityForSailency(foreSaliency,backSaliency,value,topQualityIndex){
-        let initialValue;
-        if(backSaliency>=foreSaliency)initialValue=Math.min(value+backSaliency-foreSaliency,topQualityIndex);
-        else initialValue=Math.max(value-(foreSaliency-backSaliency),0);
-        return initialValue;
 
-    }
 
-    function adjustQualityForCurrentBuffer(mediaInfo,initialValue,estimatedBandwidth,currentBufferLevel){
-        let bufferAvailable;
-        let currentValue=initialValue;
-        if(initialValue) {
-            let initialQuality = getQualityFromIndex(mediaInfo, initialValue);
-            if (estimatedBandwidth && currentBufferLevel) {
-                bufferAvailable = initialQuality * fragmentDuration / (estimatedBandwidth * 1000 * currentBufferLevel);
-                log("Test by huaying:" + "bufferAvailable factor in roundB:" + bufferAvailable);
-                if (bufferAvailable > 1) {
-                    if (currentValue) {
-                        bufferAvailable = 1;
-                        currentValue = getQualityForVideo(mediaInfo, estimatedBandwidth, bufferAvailable * currentBufferLevel);
-                    }
 
-                }
-            }
-        }
-        return currentValue;
-    }
-
-    function adjustQualityForMinimumBuffer(mediaInfo,value,estimatedBandwidth,currentBufferLevel){
-        let currentValue=value;
-        let quality=getQualityFromIndex(mediaInfo,value);
-        let estimatedBufferLevel = getEstimatedBufferLevel(currentBufferLevel,quality,estimatedBandwidth);
-        log("Test by huaying:" + "estimatedBufferLevel in roundC:" + estimatedBufferLevel);
-        if(estimatedBufferLevel<MIN_BUFFER)
-        {
-            if(currentValue){
-                currentValue=getQualityForMinimumBuffer(mediaInfo,value,estimatedBandwidth,currentBufferLevel);
-            }
-        }
-        return currentValue;
-    }
-    //to balance quality between current segment and next one
-    function balanceQualityForNextSaliency(mediaInfo,value,lastValue,nextValue,currentBufferLevel,estimatedBandwidth,currentSaliency,nextSaliency){
-        let i;
-        let count=0;
-        let currentValue=value;
-        let currentQuality,nextQuality;
-        let bufferLeft,bufferReserve;
-        for (i = value; i > 0; i--) {
-            if ((i - lastValue) * (value - lastValue) < 0) {
-                currentValue = i + 1;
-                break;
-            }
-            currentQuality = getQualityFromIndex(mediaInfo, i);
-            bufferLeft = getEstimatedBufferLevel(currentBufferLevel, currentQuality, estimatedBandwidth);
-            for (let k = nextValue; k >= 0; k--) {
-                if(getQualityFromIndex(mediaInfo,i)<estimatedBandwidth*1000)
-                {
-                    if ((i - k) * (currentSaliency - nextSaliency) < 0)break;
-                }else
-                {
-                    if ((i - k) * (currentSaliency - nextSaliency) <= 0)break;
-
-                }
-                count++;
-                nextQuality = getQualityFromIndex(mediaInfo, k);
-                bufferReserve = nextQuality * fragmentDuration / (estimatedBandwidth * 1000);
-                log("Test by huaying:" + "count:" + count + "quality value:"+value+"bufferLeft in roundD:" + bufferLeft + "bufferReserve in" +
-                    " roundD:" + bufferReserve + "currentValue:" + i + "nextValue:" + k);
-                // if (bufferLeft >= bufferReserve && nextQuality<estimatedBandwidth*1000)return i;
-                if (bufferLeft >= bufferReserve)return i;
-            }
-        }
-        return currentValue;
-    }
-    //version:3
-    function adjustQualityForNextSaliency(mediaInfo,lastSaliency,currentSaliency,nextSaliency,value,lastValue,estimatedBandwidth,currentBufferLevel,topQualityIndex){
-        let currentValue=value;
-        if(currentSaliency!=lastSaliency)
-        {
-            let nextValue=getInitialQualityForSailency(currentSaliency,nextSaliency,value,topQualityIndex);
-            currentValue=balanceQualityForNextSaliency(mediaInfo,currentValue,lastValue,nextValue,currentBufferLevel,estimatedBandwidth,currentSaliency,nextSaliency);
-
-        }
-        return currentValue;
-    }
-
-    function adjustInitialQuality(mediaInfo,testValue,estimatedBandwidth,currentBufferLevel,lastSegmentSaliency,currentSegmentSaliency,nextSaliency,lastValue,topQualityIndex){
-        let currentValue;
-        //First,check if the initial assigned quality meets the current buffer,if not, adjust it
-        currentValue= adjustQualityForCurrentBuffer(mediaInfo, testValue, estimatedBandwidth, currentBufferLevel);
-        log("Test by huaying:" + "adjust 1:" + currentValue);
-        //Second,check if the currentBuffer constrained quality meets the minimum buffer,if not,
-        // adjust it
-        currentValue = adjustQualityForMinimumBuffer(mediaInfo,currentValue, estimatedBandwidth, currentBufferLevel);
-        log("Test by huaying:" + "adjust 2:" + currentValue);
-        //Third,check if the current quality meets the saliency requirement for next segment,if
-        // not,adjust it
-        currentValue = adjustQualityForNextSaliency(mediaInfo, lastSegmentSaliency, currentSegmentSaliency, nextSaliency, currentValue, lastValue, estimatedBandwidth, currentBufferLevel,topQualityIndex);
-        log("Test by huaying:" + "adjust 3:" + currentValue);
-        return currentValue;
-    }
-
-    //version:3
 
 
 
