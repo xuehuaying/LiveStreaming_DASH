@@ -8,7 +8,7 @@ It can be divided into two parts -- offline trainer and online runner.
 * **/
 
 import DashEnvModel from '../../../dash/models/DashEnvModel';
-import RL from '../../../../mytest/app/lib/reinforcementLearning/rl';
+import DPAgent from '../../../../mytest/app/lib/reinforcementLearning/DPAgent';
 import ManifestUpdater from '../../ManifestUpdater';
 
 import EventBus from '../../../core/EventBus';
@@ -49,14 +49,14 @@ function MdpPerceptualContentAwareRule(config) {
     const dashMetrics = config.dashMetrics;
     const metricsModel = config.metricsModel;
     const streamProcessor = config.streamProcessor;
+    const agent = DPAgent(context).getInstance();
 
     const log = Debug(context).getInstance().log;
     const eventBus = EventBus(context).getInstance();
 
 
 
-    let agent,
-        mdpSwitch,
+    let mdpSwitch,
         dashEnvModel,
         throughputArray,
         latencyArray,
@@ -69,7 +69,8 @@ function MdpPerceptualContentAwareRule(config) {
         requestQualityHistory,
         lastIndex,
         metrics,
-        fragmentDuration;
+        fragmentDuration,
+        optimalPolicy;
 
     function setup() {
         mdpSwitch = false;
@@ -77,6 +78,7 @@ function MdpPerceptualContentAwareRule(config) {
         latencyArray = [];
         estimatedBandwidthArray=[];
         requestQualityHistory=[];
+        optimalPolicy = [];
         lastIndex = 0;
         dashEnvModel = DashEnvModel(context).getInstance();
         mediaPlayerModel = MediaPlayerModel(context).getInstance();
@@ -88,7 +90,7 @@ function MdpPerceptualContentAwareRule(config) {
         metrics = metricsModel.getReadOnlyMetricsFor('video');
         const bufferState = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
         R_TARGET = bufferState.target;
-        
+
         eventBus.on(Events.VIDEO_SEND_REQUEST, onVideoSendRequest, this);
         eventBus.on(Events.MDP_TRAIN, onMdpTrain, this);
     }
@@ -111,17 +113,20 @@ function MdpPerceptualContentAwareRule(config) {
             R_TARGET:R_TARGET,
             R_STABLE:mediaPlayerModel.getStableBufferTime()
         });
-        agent = new RL.DPAgent(dashEnvModel,{'gamma':0.9});
+        agent.initialize({env:dashEnvModel,opt:{'gamma':0.9}});
 
+        var policy = [];
         var lastPolicy = [];
         var roundCnt = 0;
         var MSEError = Number.POSITIVE_INFINITY;
         while(MSEError > MAX_ERROR || roundCnt <= MAX_ROUND){
-            lastPolicy = agent.P.concat();
             agent.learn();
+            policy = agent.getPolicy();
             roundCnt ++;
-            MSEError = getMSEFromArray(lastPolicy,agent.P);
+            MSEError = getMSEFromArray(lastPolicy,policy);
+            lastPolicy = policy;
         }
+        optimalPolicy = policy;
         log("The mdp training is finished!" + roundCnt + "round:Minimum square error(MSE) is" + MAX_ERROR + ".");
     }
 
@@ -211,8 +216,8 @@ function MdpPerceptualContentAwareRule(config) {
                 var maxQuality = 0;
                 var maxPoss = 0;
                 for (var i = 0; i < qualityNum; i++) {
-                    if (agent.P[startIndex + i] > maxPoss) {
-                        maxPoss = agent.P[startIndex+i];
+                    if (optimalPolicy[startIndex + i] > maxPoss) {
+                        maxPoss = optimalPolicy[startIndex+i];
                         maxQuality = i;
                     }
                 }
@@ -340,7 +345,7 @@ function MdpPerceptualContentAwareRule(config) {
         return (Math.pow(qualityNum,segmentIndex)-1)/(qualityNum-1);
     }
 
-    
+
 
     function getBitrateList(mediaInfo) {
         if (!mediaInfo || !mediaInfo.bitrateList) return null;
@@ -363,7 +368,7 @@ function MdpPerceptualContentAwareRule(config) {
 
         return infoList;
     }
-    
+
     function getQualityForAudio(mediaInfo,estimatedBandwidth){
         var bitrate=estimatedBandwidth;
         const bitrateList = getBitrateList(mediaInfo);

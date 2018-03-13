@@ -10,7 +10,7 @@
  * */
 import FactoryMaker from '../../core/FactoryMaker';
 import DashAdapter from '../DashAdapter';
-import DashManifestModel from 'DashManifestModel';
+import DashManifestModel from './DashManifestModel';
 import MdpState from '../vo/MdpState';
 
 const LAMDA = 1.5;
