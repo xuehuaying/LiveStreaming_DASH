@@ -80,17 +80,11 @@ function ABRRulesCollection() {
                     version: mediaPlayerModel.getLocalPerceptualRuleVersion()
                 })
             );
-        }
-        else if(mediaPlayerModel.getMdpPerceptualContentAwareRule()){
+        } else if(mediaPlayerModel.getMdpPerceptualContentAwareRule()){
             qualitySwitchRules.push(
-                MdpPerceptualContentAwareRule(context).create({
-                    metricsModel: metricsModel,
-                    dashMetrics: dashMetrics
-                    // todo: add streamprocessor
-                })
+                MdpPerceptualContentAwareRule(context).getInstance()
             );
-        }
-        else if (mediaPlayerModel.getBufferOccupancyABREnabled()) {
+        } else if (mediaPlayerModel.getBufferOccupancyABREnabled()) {
 			qualitySwitchRules.push(
 				BolaRule(context).create({
 					metricsModel: metricsModel,

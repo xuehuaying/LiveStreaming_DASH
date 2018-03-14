@@ -47,6 +47,8 @@ import DroppedFramesHistory from '../rules/DroppedFramesHistory.js';
 import MetricsModel from '../models/MetricsModel.js';
 import DashMetrics from '../../dash/DashMetrics.js';
 import Debug from '../../core/Debug';
+//by huaying
+import MdpPerceptualContentAwareRule from '../rules/abr/MdpPerceptualContentAwareRule';
 
 const ABANDON_LOAD = 'abandonload';
 const ALLOW_LOAD = 'allowload';
@@ -91,7 +93,8 @@ function AbrController() {
         lastSwitchTime;
 
     //by huaying
-    var richBuffer;
+    var richBuffer,
+        mdpPerceptualContentAwareRule;
 
     function setup() {
         autoSwitchBitrate = {video: true, audio: true};
@@ -116,6 +119,8 @@ function AbrController() {
         metricsModel = MetricsModel(context).getInstance();
         dashMetrics = DashMetrics(context).getInstance();
         lastSwitchTime = new Date().getTime() / 1000;
+    //    by huaying
+        mdpPerceptualContentAwareRule = MdpPerceptualContentAwareRule(context).getInstance();
     }
 
     function initialize(type, streamProcessor) {
@@ -280,6 +285,8 @@ function AbrController() {
         const streamId = streamInfo.id;
         const oldQuality = getQualityFor(type, streamInfo);
         //by huaying
+        mdpPerceptualContentAwareRule.initialize(streamProcessor,dashMetrics,metricsModel);
+
         const topQualityIdx = getTopQualityIndexFor(type, streamId);
         const rulesContext = RulesContext(context).create({
             streamProcessor: streamProcessor,
@@ -290,7 +297,7 @@ function AbrController() {
             switchHistory: switchHistoryDict[type],
             droppedFramesHistory: droppedFramesHistory,
             hasRichBuffer: hasRichBuffer(type),
-            
+
         });
 
         if (droppedFramesHistory) {
@@ -457,12 +464,12 @@ function AbrController() {
 
         return isAtTop;
     }
-    
+
     //by huaying
     function getRichBuffer() {
         return richBuffer;
     }
-    
+
     function getQualityFor(type, streamInfo) {
         var id = streamInfo.id;
         var quality;

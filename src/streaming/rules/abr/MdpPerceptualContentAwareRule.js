@@ -43,12 +43,9 @@ const MAX_ERROR = 0.01;
 
 
 
-function MdpPerceptualContentAwareRule(config) {
+function MdpPerceptualContentAwareRule() {
 
     const context = this.context;
-    const dashMetrics = config.dashMetrics;
-    const metricsModel = config.metricsModel;
-    const streamProcessor = config.streamProcessor;
     const agent = DPAgent(context).getInstance();
 
     const log = Debug(context).getInstance().log;
@@ -70,7 +67,21 @@ function MdpPerceptualContentAwareRule(config) {
         lastIndex,
         metrics,
         fragmentDuration,
-        optimalPolicy;
+        optimalPolicy,
+        streamProcessor,
+        dashMetrics,
+        metricsModel;
+
+    function initialize(streamProcessor,dashMetrics,metricsModel){
+        streamProcessor = streamProcessor;
+        dashMetrics = dashMetrics;
+        metricsModel = metricsModel;
+        abrController = streamProcessor.getABRController();
+        bufferController = streamProcessor.getBufferController();
+        metrics = metricsModel.getReadOnlyMetricsFor('video');
+        const bufferState = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
+        R_TARGET = bufferState.target;
+    }
 
     function setup() {
         mdpSwitch = false;
@@ -83,13 +94,6 @@ function MdpPerceptualContentAwareRule(config) {
         dashEnvModel = DashEnvModel(context).getInstance();
         mediaPlayerModel = MediaPlayerModel(context).getInstance();
         manifestUpdater = ManifestUpdater(context).getInstance();
-
-        abrController = streamProcessor.getABRController();
-        bufferController = streamProcessor.getBufferController();
-
-        metrics = metricsModel.getReadOnlyMetricsFor('video');
-        const bufferState = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
-        R_TARGET = bufferState.target;
 
         eventBus.on(Events.VIDEO_SEND_REQUEST, onVideoSendRequest, this);
         eventBus.on(Events.MDP_TRAIN, onMdpTrain, this);
@@ -400,6 +404,7 @@ function MdpPerceptualContentAwareRule(config) {
 
     var instance = {
         getMaxIndex: getMaxIndex,
+        initialize:initialize,
         reset: reset
     };
 
@@ -409,5 +414,5 @@ function MdpPerceptualContentAwareRule(config) {
 
 
 MdpPerceptualContentAwareRule.__dashjs_factory_name = 'MdpPerceptualContentAwareRule';
-export default FactoryMaker.getClassFactory(MdpPerceptualContentAwareRule);
+export default FactoryMaker.getSingletonFactory(MdpPerceptualContentAwareRule);
 
