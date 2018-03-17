@@ -94,7 +94,8 @@ function AbrController() {
 
     //by huaying
     var richBuffer,
-        mdpPerceptualContentAwareRule;
+        mdpPerceptualContentAwareRule,
+        mdpRuleInitialized;
 
     function setup() {
         autoSwitchBitrate = {video: true, audio: true};
@@ -108,6 +109,7 @@ function AbrController() {
         switchHistoryDict = {};
         limitBitrateByPortal = false;
         usePixelRatioInLimitBitrateByPortal = false;
+        mdpRuleInitialized = false;
         if (windowResizeEventCalled === undefined) {
             windowResizeEventCalled = false;
         }
@@ -285,7 +287,10 @@ function AbrController() {
         const streamId = streamInfo.id;
         const oldQuality = getQualityFor(type, streamInfo);
         //by huaying
-        mdpPerceptualContentAwareRule.initialize(streamProcessor,dashMetrics,metricsModel);
+        if(!mdpRuleInitialized){
+            mdpPerceptualContentAwareRule.initialize(streamProcessor,dashMetrics,metricsModel);
+            mdpRuleInitialized = true;
+        }
 
         const topQualityIdx = getTopQualityIndexFor(type, streamId);
         const rulesContext = RulesContext(context).create({

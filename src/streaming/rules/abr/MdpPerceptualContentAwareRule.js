@@ -35,6 +35,8 @@ const THROUGHPUT_DECREASE_SCALE = 1.3;
 const THROUGHPUT_INCREASE_SCALE = 1.3;
 const QUALITY_DEFAULT=0;
 const MIN_BUFFER=4;
+const R_TARGET= 12;
+
 
 const MAX_ROUND = 1000;
 const MAX_ERROR = 0.01;
@@ -62,7 +64,6 @@ function MdpPerceptualContentAwareRule() {
         bufferController,
         mediaPlayerModel,
         manifestUpdater,
-        R_TARGET,
         requestQualityHistory,
         lastIndex,
         metrics,
@@ -72,15 +73,17 @@ function MdpPerceptualContentAwareRule() {
         dashMetrics,
         metricsModel;
 
-    function initialize(streamProcessor,dashMetrics,metricsModel){
-        streamProcessor = streamProcessor;
-        dashMetrics = dashMetrics;
-        metricsModel = metricsModel;
+    function initialize(streamprocessor,dashmetrics,metricsmodel){
+        streamProcessor = streamprocessor;
+        dashMetrics = dashmetrics;
+        metricsModel = metricsmodel;
         abrController = streamProcessor.getABRController();
         bufferController = streamProcessor.getBufferController();
         metrics = metricsModel.getReadOnlyMetricsFor('video');
-        const bufferState = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
-        R_TARGET = bufferState.target;
+        // const bufferState = (metrics.BufferState.length > 0) ? metrics.BufferState[metrics.BufferState.length - 1] : null;
+        // if(bufferState){
+        //     R_TARGET = bufferState.target;
+        // }
     }
 
     function setup() {
