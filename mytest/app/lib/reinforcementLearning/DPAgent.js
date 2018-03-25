@@ -1,4 +1,5 @@
 import FactoryMaker from "../../../../src/core/FactoryMaker";
+import Debug from '../../../../src/core/Debug';
 
 function DPAgent(){
     /*
@@ -14,7 +15,9 @@ function DPAgent(){
     instance,
         env,
         gamma;
-    
+    let context = this.context;
+    const log = Debug(context).getInstance().log;
+
     function initialize(config){
         env = config.env;
         gamma = getopt(config.opt,'gamma',0.75);
@@ -30,7 +33,7 @@ function DPAgent(){
             }
         }
     }
-    
+
     function act(s){
         // behave according to the learned policy
         var poss = env.allowedActions(s);
@@ -45,8 +48,8 @@ function DPAgent(){
     }
     function learn() {
         // perform a single round of value iteration
-
-
+        this.evaluatePolicy(); // writes this.V
+        this.updatePolicy(); // writes this.Ps
     }
     function evaluatePolicy() {
         // perform a synchronous update of the value function
@@ -60,14 +63,13 @@ function DPAgent(){
                 var a = poss[i];
                 var prob = P[a*ns+s]; // probability of taking action under policy
                 if(prob === 0) { continue; } // no contribution, skip for speed
-                var ns = env.nextStateDistribution(s,a);
-                var rs = env.reward(s,a,ns); // reward for s->a->ns transition
-                v += prob * (rs + gamma * V[ns]);
+                var nextState = env.nextStateDistribution(s,a);
+                var rs = env.reward(s,a,nextState); // reward for s->a->ns transition
+                v += prob * (rs + gamma * V[nextState]);
             }
             Vnew[s] = v;
         }
         V = Vnew; // swap
-
     }
     function updatePolicy() {
         // update policy to be greedy w.r.t. learned Value function
@@ -75,27 +77,30 @@ function DPAgent(){
             var poss = env.allowedActions(s);
             // compute value of taking each allowed action
             var vmax, nmax;
+            var vsum = 0;
             var vs = [];
             for(var i=0,n=poss.length;i<n;i++) {
                 var a = poss[i];
-                var ns = env.nextStateDistribution(s,a);
-                var rs = env.reward(s,a,ns);
-                var v = rs + gamma * V[ns];
+                var nextState = env.nextStateDistribution(s,a);
+                var rs = env.reward(s,a,nextState);
+                var v = rs + gamma * V[nextState];
                 vs.push(v);
+                vsum += v;
                 if(i === 0 || v > vmax) { vmax = v; nmax = 1; }
                 else if(v === vmax) { nmax += 1; }
             }
             // update policy smoothly across all argmaxy actions
             for(var i=0,n=poss.length;i<n;i++) {
                 var a = poss[i];
-                this.P[a*ns+s] = (vs[i] === vmax) ? 1.0/nmax : 0.0;
+                P[a*ns+s] = (vs[i] === vmax) ? 1.0/nmax : 0.0;
+                //P[a*ns+s] = vs[i]/vsum;
             }
         }
     }
-    
+
     function getPolicy() {
         return P;
-        
+
     }
     /*
     * helper functions

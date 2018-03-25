@@ -331,21 +331,15 @@ function DashAdapter() {
 	//    by huaying: classify the segmentImportance of the current period
 	//TODO: we need automatically classifying method here in the future
 	function classifySegmentImportance(segmentImportance){
-        var saliency,level;
+        var minSa = Number.MAX_VALUE;
+
 		for(var i=0;i<segmentImportance.length;i++){
-		//    classify manually
-            saliency=segmentImportance[i].importance;
-             if(saliency==10){
-                 level=4;
-             }else if( saliency==9){
-                 level=3;
-             }else if(saliency==8){
-                 level=2;
-             }else{
-                 level=1;
-             }
-			saliencyClass.push(level);
-		}
+		    minSa = Math.min(segmentImportance[i].importance, minSa);
+        }
+
+        for (var j = 0; j < segmentImportance.length; j++){
+            saliencyClass.push(segmentImportance[j].importance - minSa + 1);
+        }
     }
 
 
@@ -389,7 +383,7 @@ function DashAdapter() {
                 classifySegmentImportance(segmentImportance);
 
         }
-        
+
         id = mediaInfo.id;
         data = id ? dashManifestModel.getAdaptationForId(id, manifest, periodInfo.index) : dashManifestModel.getAdaptationForIndex(mediaInfo.index, manifest, periodInfo.index);
         streamProcessor.getRepresentationController().updateData(data, adaptation, type);
@@ -464,7 +458,7 @@ function DashAdapter() {
         periods = [];
         adaptations = {};
     }
-    
+
 
     instance = {
         initialize: initialize,

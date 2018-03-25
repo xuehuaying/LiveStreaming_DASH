@@ -12,6 +12,7 @@ import FactoryMaker from '../../core/FactoryMaker';
 import DashAdapter from '../DashAdapter';
 import DashManifestModel from './DashManifestModel';
 import MdpState from '../vo/MdpState';
+import Debug from '../../core/Debug';
 
 const LAMDA = 1.5;
 const E = 1.5;
@@ -23,6 +24,13 @@ function DashEnvModel() {
 	let context = this.context;
 	let adaptor = DashAdapter(context).getInstance();
 	let dashManifestModel=DashManifestModel(context).getInstance();
+    let step;
+    let startSegIndex;
+    let sk_min;
+    let sk_max;
+    let mk_min;
+    let mk_max;
+    const log = Debug(context).getInstance().log;
 
 	var q,
 		m,
@@ -31,9 +39,11 @@ function DashEnvModel() {
 		R_MIN,
 		R_STABLE,
 		R_TARGET,
-		qualityDict = [],
+		qualityDict,
 		shotInfo = [],
 		saliencyInfo = [],
+        saliencyList,
+        maxSa,
 		segmentDuration;//q:quality count  m:segment count to be calculated
 
 	function initialize(config) {
@@ -44,11 +54,14 @@ function DashEnvModel() {
 
 		var mediaInfo = streamProcessor.getMediaInfo();
 		var adaptation=adaptor.getDataForMedia(mediaInfo);
+
+        var initQualityIndex = config.initQualityIndex;
+
 		var representations;//sorted in the ascending order
 		var shotsList;
-		var saliencyList;
 
-		states = constructStates(initialBandwidth, initialBuffer);
+        step = config.segmentStep;
+        startSegIndex = config.startSegment;
 		R_MAX = config.R_MAX;
 		R_MIN = config.R_MIN;
 		R_TARGET = config.R_TARGET;
@@ -56,19 +69,35 @@ function DashEnvModel() {
 
 		q = mediaInfo.representationCount;
 		m = dashManifestModel.getSegmentCountForAdaptation(manifest,adaptation);
-		representations = dashManifestModel.getRepresentationsForAdaptation(manifest,adaptation);
+        segmentDuration = streamProcessor.getCurrentRepresentationInfo().fragmentDuration;
+        representations = dashManifestModel.getRepresentationsForAdaptation(manifest,adaptation);
+        qualityDict = [];
 		for(var i = 0;i < representations.length;i++)
-			qualityDict.push(representations[i].bandwidth);
+			qualityDict.push(representations[i].bandwidth / 1000);
 		shotsList = adaptor.getShotsList();
-		saliencyList = adaptor.getSaliencyList();
+		saliencyList = adaptor.getSaliencyClass();
 		changeToShotInfo(shotsList);
-		changeToSaliencyInfo(saliencyList);
+        refineSaliencyList(initialBandwidth);
+		changeToSaliencyInfo();
+        states = constructStates(initialBandwidth, initialBuffer, initQualityIndex);
 
-		segmentDuration = streamProcessor.getCurrentRepresentationInfo().fragmentDuration;
-	}
+        // calculate min and max reward for each kind
+        sk_min = 0;
+        sk_max = ((R_MAX-R_MIN)/2)*(R_MAX-R_MIN)/2;
+        mk_min = [];
+        mk_max = [];
+
+        maxSa = 0;
+        for(var k = 0; k < saliencyList.length; k++)
+            maxSa = Math.max(maxSa, saliencyList[k]);
+        for(var p = 1; p <= maxSa; p++){
+            mk_min.push(getQualityReward(0, p));
+            mk_max.push(getQualityReward(q-1, p));
+        }
+    }
 
 	function getNumStates(){
-		return (Math.pow(q,m)-1)/(q-1);
+		return (Math.pow(q,step+1)-1)/(q-1);
 	}
 
 	function getMaxNumActions(){
@@ -79,7 +108,7 @@ function DashEnvModel() {
 	function allowedActions(index){
 		var segmentIndex = sToSegmentIndex(index);
 		var as = [];
-		if(segmentIndex != m-1){
+		if(segmentIndex != startSegIndex + step - 1){
 			for(var i = 0;i < q;i++ ){
 				as.push(i);
 			}
@@ -97,28 +126,32 @@ function DashEnvModel() {
 	function reward(index,action,nextIndex){
 		var state = states[index];
 		var nextState = states[nextIndex];
-		var nextBuffer = nextState.buffer;
-		var r_sk = getSmoothnessReward(nextState.buffer);
-		var r_dk = getSwitchingReward(state,action,nextState);
-		var r_mk = getQualityReward(nextState);
+		var curBuffer = state.buffer;
+		var r_sk = getNormalizedSmoothnessReward(nextState.buffer);
+		var r_dk = getNormalizedSwitchingReward(state,action,nextState);
+		var r_mk = getNormalizedQualityReward(action, saliencyList[sToSegmentIndex(nextIndex)]);
 		var a,b,c;
-		if(nextBuffer > R_MAX){
+		if(curBuffer > R_MAX){
 			a = 0.4;
 			b = 0.2;
 			c = 0.4;
-		}else if(nextBuffer < R_MIN){
-			a = 0.8;
-			b = 0.1;
+		}else if(curBuffer < R_MIN){
+			a = 0.9;
+			b = 0.05;
+			c = 0.05;
+		}else if(curBuffer < R_TARGET){
+			a = 0.6;
+			b = 0.3;
 			c = 0.1;
-		}else{
-			a = 0.2;
-			b = 0.4;
-			c = 0.4;
-		}
-		return a * r_sk + b * r_dk + c * r_mk;
-	}
+		}else {
+		    a = 0.2;
+		    b = 0.5;
+		    c = 0.3;
+        }
 
-
+        return r_sk + r_dk + r_mk;
+		 // return a * r_sk + b * r_dk + c * r_mk;
+    }
 
 	/*auxiliary functions
 	*
@@ -129,54 +162,19 @@ function DashEnvModel() {
 	}
 
 	function sToSegmentIndex(index){
-		return Math.floor(getBaseLog(q,index * (q - 1) + 1));
+		return Math.floor(getBaseLog(q,index * (q - 1) + 1)) - 1 + startSegIndex;
 	}
 
-	function getAverageQuality(s){
-		var bitrateVector = s.bitrateVector;
-		var sum = 0, averageQuality = 0;
-		var length = bitrateVector.length;
-		if (length){
-			for(var i = 0;i < length;i++){
-				var index = bitrateVector[i];
-				sum += qualityDict[index];
-			}
-			averageQuality = sum/length;
-		}
-		return averageQuality;
-	}
-
-	function getQualityIndexFor(quality,bitrateVector){
-		for(var i = 0;i < length;i++){
-			if (quality < bitrateVector[i]) return i-1;
-		}
-		if(quality == bitrateVector[length-1])return length-1;
-	}
-
-	function getStandardDeviation(s){
-		var bitrateVector = s.bitrateVector;
-		var averageQuality = getAverageQuality(s);
-		var length = bitrateVector.length;
-		var standardDev = 0;
-		if(length > 1){
-			standardDev = Math.sqrt(bitrateVector.reduce(function (prev,cur){
-				return prev + Math.pow(qualityDict[cur]-averageQuality,2);
-			},0 )/(length-1));
-		}
-		return standardDev;
-	}
-
-	function constructStates(initialBandwidth, initialBuffer){
+	function constructStates(initialBandwidth, initialBuffer, initQualityIndex){
 		var statesNum = getNumStates();
 		var states = [];
-		var startSegment = 0;
 
 		var state_0 = new MdpState();
 		state_0.buffer = initialBuffer;
 		state_0.bandwidth = initialBandwidth;
-		state_0.bitrateVector = [0];
-		state_0.p = shotInfo[startSegment];
-		state_0.s = saliencyInfo[startSegment];
+		state_0.bitrateVector = [initQualityIndex];
+		state_0.p = shotInfo[startSegIndex-1];
+		state_0.s = saliencyInfo[startSegIndex-1];
 		states.push(state_0);
 
 		for(var i = 1;states.length < statesNum; i++){
@@ -185,19 +183,20 @@ function DashEnvModel() {
 
 			for(var j = 0;j < actions.length; j++){
 				var action = actions[j];
+				var quality = qualityDict[action];
 
 				var state_i = new MdpState();
-				state_i.throughput = initialBandwidth;
+				state_i.bandwidth = initialBandwidth;
 				if(sleepMode)
-					state_i.buffer = states[i - 1].buffer + segmentDuration - action / state_i.throughput * segmentDuration - SLEEP_INTERVAL;
+					state_i.buffer = states[i - 1].buffer + segmentDuration - quality / state_i.bandwidth * segmentDuration - SLEEP_INTERVAL/1000;
 				else
-					state_i.buffer = states[i - 1].buffer + segmentDuration - action / state_i.throughput * segmentDuration;
+					state_i.buffer = states[i - 1].buffer + segmentDuration - quality / state_i.bandwidth * segmentDuration;
 				if(states[i - 1].p == 1)
 					state_i.bitrateVector = [action];
 				else
 					state_i.bitrateVector = states[i - 1].bitrateVector.concat(action);
-				state_i.p = shotInfo[sToSegmentIndex(states.length) + startSegment];
-				state_i.s = saliencyInfo[sToSegmentIndex(states.length) + startSegment];
+				state_i.p = shotInfo[sToSegmentIndex(states.length)];
+				state_i.s = saliencyInfo[sToSegmentIndex(states.length)];
 				states.push(state_i);
 			}
 		}
@@ -205,73 +204,81 @@ function DashEnvModel() {
 		return states;
 	}
 
-	function getSmoothnessReward(nextBuffer){
-		var r_sk;
-		if(nextBuffer > R_MAX){
-			r_sk = R_MAX - nextBuffer;
-		}else if(nextBuffer < R_MIN){
-			r_sk = nextBuffer - R_MIN;
-		}else {
-			r_sk = -Math.abs(R_STABLE - nextBuffer);
-		}
-		return r_sk;
+	function getNormalizedSmoothnessReward(nextBuffer){
+	    if(nextBuffer < R_MIN){
+	        return nextBuffer - R_MIN;
+        } else if(nextBuffer > R_MAX){
+	        return R_MAX - nextBuffer;
+        }
+
+	    var sk = (nextBuffer-R_MIN)*(R_MAX-nextBuffer);
+        return getNormalizedReward(sk, sk_min, sk_max);
 	}
 
-	function getSwitchingReward(state,a,nextState){
-		var nextSaliency = nextState.s;
-		var nextBuffer = nextState.buffer;
-		var standardDev = 0;
+	function getNormalizedSwitchingReward(state,a,nextState){
+	    var nextSaliency = nextState.s;
 		var r_dk;
-		if(state.p == 1){
-			var delta, dk;
-			var averageQuality = getAverageQuality(state);
-			var avgQualityIndex = getQualityIndexFor(averageQuality,state.bitrateVector);
+		var cur_dkmax;
+        var expectedQualityIndex = state.bitrateVector[state.bitrateVector.length-1];
+        var curQuality = qualityDict[a];
 
-			delta = a - avgQualityIndex;
-			dk = Math.pow(Math.abs(delta - nextSaliency), 3);
-			if(nextBuffer > R_MAX){
-				if(delta * nextSaliency > 0 || (delta === 0 && nextSaliency === 0)){
-					if(Math.abs(delta) > nextSaliency){
-						r_dk = LAMDA * Math.log(dk + E);
-					}else{
-						r_dk = Math.log(dk + E);
-					}
-				}else{
-					r_dk = -Math.log(dk + E);
-				}
-			}else{
-				if(delta * nextSaliency > 0 || (delta === 0 && nextSaliency === 0))
-					r_dk = -Math.log(dk + E);
-				else r_dk = -LAMDA* Math.log(dk + E);
-			}
-		}else{
-			standardDev = getStandardDeviation(nextState);
-			r_dk = -Math.log(standardDev + E);
+        if(state.p == 1){
+            expectedQualityIndex = Math.max(0, Math.min(qualityDict.length - 1, expectedQualityIndex + nextSaliency));
 		}
-		return r_dk;
+        var expectedQuality = qualityDict[expectedQualityIndex];
+
+        r_dk = Math.log(Math.abs((qualityDict[expectedQualityIndex]-curQuality)*1000) + E);
+
+        cur_dkmax = Math.abs(expectedQuality-qualityDict[0]) > Math.abs(expectedQuality-qualityDict[qualityDict.length-1]) ?
+            Math.log(Math.abs((expectedQuality-qualityDict[0])*1000) + E) : Math.log(Math.abs((expectedQuality-qualityDict[qualityDict.length-1])*1000) + E);
+		return 1 - getNormalizedReward(r_dk, 0, cur_dkmax);
 	}
 
-	function getQualityReward(nextState){
-		var averageQuality = getAverageQuality(nextState);
-		return Math.log(averageQuality + E);
+	function getQualityReward(qualityIndex, saliency){
+        return Math.log(Math.pow(qualityDict[qualityIndex]*1000+ E,saliency));
 	}
 
+	function getNormalizedQualityReward(qualityIndex, saliency) {
+	    var factor = saliency/maxSa;
+        return factor*getNormalizedReward(getQualityReward(qualityIndex, saliency), mk_min[saliency-1], mk_max[saliency-1]);
+    }
+
+	function getNormalizedReward(value, min, max) {
+        return (value - min)/(max - min);
+    }
 	function changeToShotInfo(shotsList){
 		var cnt = 1;
 		var length = shotsList.length;
 		shotInfo[length - 1] = cnt;
 		for(var i = 1;i < length ; i++){
-			if(shotsList[length - 1 - i] == shotsList[length - 1]){
+			if(shotsList[length - 1 - i] == shotsList[length - i]){
 				cnt++;
 			}else{
 				cnt = 1;
 			}
 			shotInfo[length - 1 - i] = cnt;
 		}
-
 	}
 
-	function changeToSaliencyInfo(saliencyList){
+	function refineSaliencyList(initialBandwidth) {
+        // first, we will refine the saliencyList according to current bandwidth and bitrate list
+        var maxAvaQualityIndex = 0;
+        for (var m = 0; m < qualityDict.length; m++ ){
+            if(initialBandwidth*1.3 > qualityDict[m])
+                maxAvaQualityIndex = m;
+        }
+        var topSaClass = maxAvaQualityIndex + 1;
+        var curTopSa = 0;
+        for (var n = 0; n < saliencyList.length; n++){
+            curTopSa = Math.max(curTopSa, saliencyList[n]);
+        }
+        // refine saliencyList
+        for (var i = 0; i < saliencyList.length; i++){
+            saliencyList[i] = Math.round(saliencyList[i]*topSaClass/curTopSa);
+        }
+    }
+
+	function changeToSaliencyInfo(){
         var delta = 0;
         var length = saliencyList.length;
         saliencyInfo[0] = delta;
@@ -279,13 +286,18 @@ function DashEnvModel() {
             delta = saliencyList[i] - saliencyList[i - 1];
             saliencyInfo.push(delta);
         }
-
 	}
 
+    function updateSegParameter(step, start) {
+        this.step = step;
+        this.startSegment = start;
+    }
 
-
-
-
+    function getStartStateIndexForSegment(segmentIndex, qualityNum){
+	    if(segmentIndex - startSegIndex < 0)
+	        return 0;
+        return (Math.pow(qualityNum,segmentIndex-startSegIndex+1)-1)/(qualityNum-1);
+    }
 
 	instance = {
 		initialize:initialize,
@@ -293,8 +305,9 @@ function DashEnvModel() {
 		getMaxNumActions:getMaxNumActions,
 		allowedActions:allowedActions,
 		nextStateDistribution:nextStateDistribution,
-		reward:reward
-
+		reward:reward,
+        updateSegParameter:updateSegParameter,
+        getStartStateIndexForSegment:getStartStateIndexForSegment
 	};
 
 	return instance;

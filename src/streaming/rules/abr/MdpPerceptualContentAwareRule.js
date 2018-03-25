@@ -21,7 +21,7 @@ import BufferController from '../../controllers/BufferController';
 import Debug from '../../../core/Debug';
 import MediaPlayerModel from '../../models/MediaPlayerModel';
 import BitrateInfo from '../../vo/BitrateInfo';
-
+import * as MyDashConstants from '../../../dash/constants/MyDashConstants';
 
 const MAX_MEASUREMENTS_TO_KEEP = 20;
 const CACHE_LOAD_THRESHOLD_VIDEO = 50;
@@ -39,7 +39,7 @@ const R_TARGET= 12;
 
 
 const MAX_ROUND = 1000;
-const MAX_ERROR = 0.01;
+const MAX_ERROR = 0.0;
 
 
 
@@ -65,13 +65,17 @@ function MdpPerceptualContentAwareRule() {
         mediaPlayerModel,
         manifestUpdater,
         requestQualityHistory,
-        lastIndex,
+        startIndex,
+        preSegIndex,
+        preQuality,
         metrics,
         fragmentDuration,
         optimalPolicy,
         streamProcessor,
         dashMetrics,
-        metricsModel;
+        metricsModel,
+        minAvailiableSegIndex,
+        maxAvailiableSegIndex;
 
     function initialize(streamprocessor,dashmetrics,metricsmodel){
         streamProcessor = streamprocessor;
@@ -93,10 +97,14 @@ function MdpPerceptualContentAwareRule() {
         estimatedBandwidthArray=[];
         requestQualityHistory=[];
         optimalPolicy = [];
-        lastIndex = 0;
+        startIndex = 0;
+        preSegIndex = 0;
+        preQuality = 0;
         dashEnvModel = DashEnvModel(context).getInstance();
         mediaPlayerModel = MediaPlayerModel(context).getInstance();
         manifestUpdater = ManifestUpdater(context).getInstance();
+        minAvailiableSegIndex = 0;
+        maxAvailiableSegIndex = 0;
 
         eventBus.on(Events.VIDEO_SEND_REQUEST, onVideoSendRequest, this);
         eventBus.on(Events.MDP_TRAIN, onMdpTrain, this);
@@ -107,34 +115,48 @@ function MdpPerceptualContentAwareRule() {
      Offline Training
      * **/
     function onMdpTrain(e){
-        var initialBuffer = 0;
-        if(e.mpdIndex) initialBuffer = bufferController.getBufferLevel();
+        var initialBuffer = bufferController.getBufferLevel();
         mdpSwitch = true;
-        dashEnvModel.initialize({
-            streamProcessor: streamProcessor,
-            manifest: manifestUpdater.getManifest(),
-            bandwidth:estimatedBandwidthArray[estimatedBandwidthArray.length-1],
-            buffer:initialBuffer,
-            R_MAX:abrController.getRichBuffer(),
-            R_MIN:MIN_BUFFER,
-            R_TARGET:R_TARGET,
-            R_STABLE:mediaPlayerModel.getStableBufferTime()
-        });
+            dashEnvModel.initialize({
+                streamProcessor: streamProcessor,
+                manifest: manifestUpdater.getManifest(),
+                bandwidth:estimatedBandwidthArray[estimatedBandwidthArray.length-1],
+                buffer:initialBuffer,
+                R_MAX:abrController.getRichBuffer(),
+                R_MIN:MIN_BUFFER,
+                R_TARGET:R_TARGET,
+                R_STABLE:mediaPlayerModel.getStableBufferTime(),
+                segmentStep:MyDashConstants.MDP_SEGMENT_COUNT,
+                startSegment:e.segIndex,
+                initQualityIndex:preQuality
+            });
+        log("bandwidth: " + estimatedBandwidthArray[estimatedBandwidthArray.length-1] + " preQuality:" + preQuality + "initBuffer:" + initialBuffer);
+
         agent.initialize({env:dashEnvModel,opt:{'gamma':0.9}});
 
         var policy = [];
         var lastPolicy = [];
         var roundCnt = 0;
         var MSEError = Number.POSITIVE_INFINITY;
-        while(MSEError > MAX_ERROR || roundCnt <= MAX_ROUND){
+        while(MSEError > MAX_ERROR && roundCnt <= MAX_ROUND){
             agent.learn();
             policy = agent.getPolicy();
             roundCnt ++;
             MSEError = getMSEFromArray(lastPolicy,policy);
-            lastPolicy = policy;
+            log("mse error:"+MSEError);
+            // lastPolicy = [];
+            // lastPolicy = policy.concat();
+            // lastPolicy = policy;
+            for (var i = 0; i < policy.length; i++)
+            {
+                lastPolicy[i] = policy[i];
+            }
         }
         optimalPolicy = policy;
+        minAvailiableSegIndex = e.segIndex;
+        maxAvailiableSegIndex = e.segIndex + MyDashConstants.MDP_SEGMENT_COUNT - 1;
         log("The mdp training is finished!" + roundCnt + "round:Minimum square error(MSE) is" + MAX_ERROR + ".");
+
     }
 
     function updateBandwidthArray(mediaType,lastRequest,streamProcessor,isDynamic,abrController){
@@ -209,12 +231,10 @@ function MdpPerceptualContentAwareRule() {
 
         if (mediaType == 'video') {
             var qualityNum = dashEnvModel.getMaxNumActions();
+            var ns = dashEnvModel.getNumStates();
             var curSegmentIndex = streamProcessor.getIndexHandler().getCurrentIndex();
-            var S_last = getStartStateIndexForSegment(curSegmentIndex - 1, qualityNum);
-            var S_cur = getStartStateIndexForSegment(curSegmentIndex, qualityNum);
-            var startIndex = S_cur + (lastIndex - S_last) * qualityNum;
 
-
+            log("min: "+minAvailiableSegIndex+"cur: "+curSegmentIndex+"max: "+maxAvailiableSegIndex);
             updateBandwidthArray(mediaType,lastRequest,streamProcessor,isDynamic,abrController);
             if(!mdpSwitch){
                 switchRequest.value = 0;
@@ -222,17 +242,36 @@ function MdpPerceptualContentAwareRule() {
             }else{
                 var maxQuality = 0;
                 var maxPoss = 0;
-                for (var i = 0; i < qualityNum; i++) {
-                    if (optimalPolicy[startIndex + i] > maxPoss) {
-                        maxPoss = optimalPolicy[startIndex+i];
-                        maxQuality = i;
+
+                log("add by menglan, index:" + curSegmentIndex + " maxAvailiableSegIndex:" + maxAvailiableSegIndex);
+
+                if (curSegmentIndex + 1 < minAvailiableSegIndex){
+                    maxQuality = 0;
+                    log("curSegIndex < minAvailiable, select 0");
+                } else if (curSegmentIndex + 1 > maxAvailiableSegIndex){
+                    maxQuality = 0;
+                    log("add by menglan: select -1 ");
+                } else{
+                    if(curSegmentIndex + 1 == minAvailiableSegIndex) {
+                        startIndex = 0;
+                    }else if(preSegIndex != curSegmentIndex){
+                        startIndex = dashEnvModel.nextStateDistribution(startIndex,preQuality);
+                    }
+
+                    for (var i = 0; i < qualityNum; i++) {
+                        log("startIndex:" + startIndex);
+                        log("possibility: " + optimalPolicy[startIndex + i*ns]);
+                        if (optimalPolicy[startIndex + i*ns] > maxPoss) {
+                            maxPoss = optimalPolicy[startIndex+i*ns];
+                            maxQuality = i;
+                        }
                     }
                 }
                 switchRequest.value = maxQuality;
                 switchRequest.reason = 'get max quality from mdp trained result';
             }
-            lastIndex = startIndex + switchRequest.value;
-
+            preSegIndex = curSegmentIndex;
+            preQuality = switchRequest.value;
         }else if(mediaType=='audio'){
             //choose the audio quality
             switchRequest.value = getQualityForAudio(mediaInfo, estimatedBandwidthArray[estimatedBandwidthArray.length-1]);
@@ -245,9 +284,7 @@ function MdpPerceptualContentAwareRule() {
                 streamProcessor.getScheduleController().setTimeToLoadDelay(0);
                 log( 'type: ', mediaType,'MdpPerceptualContentAwareRule requesting switch to index: ', switchRequest.value,"switch reason:", switchRequest.reason);
             }
-
         }
-
         return switchRequest;
     }
 
@@ -347,12 +384,6 @@ function MdpPerceptualContentAwareRule() {
 
         return undefined;
     }
-
-    function getStartStateIndexForSegment(segmentIndex, qualityNum){
-        return (Math.pow(qualityNum,segmentIndex)-1)/(qualityNum-1);
-    }
-
-
 
     function getBitrateList(mediaInfo) {
         if (!mediaInfo || !mediaInfo.bitrateList) return null;

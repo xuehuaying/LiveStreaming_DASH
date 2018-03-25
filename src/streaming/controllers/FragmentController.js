@@ -36,6 +36,7 @@ import EventBus from '../../core/EventBus';
 import Events from '../../core/events/Events';
 import FactoryMaker from '../../core/FactoryMaker';
 import Debug from '../../core/Debug';
+import * as MyDashConstants from '../../dash/constants/MyDashConstants';
 
 function FragmentController(/*config*/) {
 
@@ -107,9 +108,9 @@ function FragmentController(/*config*/) {
         eventBus.trigger(isInit ? Events.INIT_FRAGMENT_LOADED : Events.MEDIA_FRAGMENT_LOADED, {chunk: chunk, fragmentModel: e.sender});
 
         // if it is the fourth video segment, train mdp model
-        if (request.mediaType == "video" && request.index == 4)
+        if (request.mediaType == "video" && request.index > 0 && (request.index + 1) % MyDashConstants.MDP_SEGMENT_COUNT === 0)
         {
-            eventBus.trigger(Events.MDP_TRAIN, {mpdIndex: 0});
+            eventBus.trigger(Events.MDP_TRAIN, {segIndex: request.index + 1});
         }
     }
 
