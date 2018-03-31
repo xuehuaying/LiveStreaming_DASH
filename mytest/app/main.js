@@ -6,7 +6,7 @@ app.controller('DashController', function($scope, FileSaver, Blob) {
 
     // $scope.url = "http://192.168.0.175/dashcontent/testvideo_24_modified.mpd";
     //$scope.url = "http://222.31.64.59/testvideo2/testvideo_24_modified.mpd";
-    $scope.url = "http://192.168.0.104/dashcontent/testvideo_24_modified.mpd";
+    $scope.url = "http://192.168.0.104/finalseq/lvxing/lvxing_modified.mpd";
     $scope.video = document.querySelector("#videoPlayer");
     $scope.player = dashjs.MediaPlayer().create();
     //by huaying

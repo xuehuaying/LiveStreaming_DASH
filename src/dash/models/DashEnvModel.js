@@ -30,6 +30,7 @@ function DashEnvModel() {
     let sk_max;
     let mk_min;
     let mk_max;
+    let isInfiniteBandwidth;
     const log = Debug(context).getInstance().log;
 
 	var q,
@@ -66,6 +67,7 @@ function DashEnvModel() {
 		R_MIN = config.R_MIN;
 		R_TARGET = config.R_TARGET;
 		R_STABLE = config.R_STABLE;
+        isInfiniteBandwidth = false;
 
 		q = mediaInfo.representationCount;
 		m = dashManifestModel.getSegmentCountForAdaptation(manifest,adaptation);
@@ -130,27 +132,12 @@ function DashEnvModel() {
 		var r_sk = getNormalizedSmoothnessReward(nextState.buffer);
 		var r_dk = getNormalizedSwitchingReward(state,action,nextState);
 		var r_mk = getNormalizedQualityReward(action, saliencyList[sToSegmentIndex(nextIndex)]);
-		var a,b,c;
-		if(curBuffer > R_MAX){
-			a = 0.4;
-			b = 0.2;
-			c = 0.4;
-		}else if(curBuffer < R_MIN){
-			a = 0.9;
-			b = 0.05;
-			c = 0.05;
-		}else if(curBuffer < R_TARGET){
-			a = 0.6;
-			b = 0.3;
-			c = 0.1;
-		}else {
-		    a = 0.2;
-		    b = 0.5;
-		    c = 0.3;
-        }
 
-        return r_sk + r_dk + r_mk;
-		 // return a * r_sk + b * r_dk + c * r_mk;
+		if (isInfiniteBandwidth){
+		    return 0.1*r_sk + 0.1*r_dk + 0.8*r_mk;
+        }else {
+            return r_sk + r_dk + r_mk;
+        }
     }
 
 	/*auxiliary functions
@@ -276,6 +263,10 @@ function DashEnvModel() {
         for (var i = 0; i < saliencyList.length; i++){
             saliencyList[i] = Math.round(saliencyList[i]*topSaClass/curTopSa);
         }
+
+        // decide if it is infinite bandwidth
+        if (initialBandwidth > 2*qualityDict[qualityDict.length - 1])
+            isInfiniteBandwidth = true;
     }
 
 	function changeToSaliencyInfo(){
